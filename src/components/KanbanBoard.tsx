@@ -1,6 +1,6 @@
 import React from 'react';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
-import { Clock, MoreHorizontal, Plus } from 'lucide-react';
+import { Clock, MoreHorizontal, Plus, Trash } from 'lucide-react';
 import type { Task, TaskStatus } from '../types';
 import { cn } from '../lib/utils';
 
@@ -9,6 +9,7 @@ interface KanbanBoardProps {
     onDragEnd: (result: DropResult) => void;
     onAddClick: () => void;
     onTaskClick: (task: Task) => void;
+    onDeleteTask: (task: Task) => void;
 }
 
 const columns: { id: TaskStatus; title: string; color: string }[] = [
@@ -17,14 +18,14 @@ const columns: { id: TaskStatus; title: string; color: string }[] = [
     { id: 'done', title: 'Done', color: 'bg-green-50 dark:bg-green-900/20' },
 ];
 
-export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, onDragEnd, onAddClick, onTaskClick }) => {
+export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, onDragEnd, onAddClick, onTaskClick, onDeleteTask }) => {
     return (
-        <div className="h-full flex flex-col">
+        <div className="h-full flex flex-col mt-4">
             <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">Task Board</h2>
                 <button
                     onClick={onAddClick}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors text-sm font-medium"
                 >
                     <Plus size={16} />
                     Add Task
@@ -37,7 +38,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, onDragEnd, onAd
                         const columnTasks = tasks.filter(task => task.status === column.id);
 
                         return (
-                            <div key={column.id} className={cn("flex flex-col rounded-xl p-4 h-full", column.color)}>
+                            <div key={column.id} className={cn("flex flex-col rounded-xl p-4 min-h-[500px] h-fit", column.color)}>
                                 <div className="flex items-center justify-between mb-4">
                                     <div className="flex items-center gap-2">
                                         <h3 className="font-semibold text-gray-700 dark:text-gray-200">{column.title}</h3>
@@ -80,6 +81,15 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, onDragEnd, onAd
                                                                 )}>
                                                                     {task.priority}
                                                                 </span>
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        onDeleteTask(task);
+                                                                    }}
+                                                                    className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-600 opacity-0 group-hover:opacity-100"
+                                                                >
+                                                                    <Trash size={14} />
+                                                                </button>
                                                             </div>
                                                             <h4 className="font-medium text-gray-900 dark:text-white mb-1">{task.title}</h4>
                                                             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{task.project}</p>
