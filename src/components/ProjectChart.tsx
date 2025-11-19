@@ -1,15 +1,20 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
-const data = [
-    { name: 'Website Redesign', progress: 85, color: '#3b82f6' },
-    { name: 'Mobile App', progress: 60, color: '#8b5cf6' },
-    { name: 'Marketing Campaign', progress: 45, color: '#f59e0b' },
-    { name: 'Database Migration', progress: 90, color: '#10b981' },
-    { name: 'Q4 Planning', progress: 30, color: '#ef4444' },
-];
+interface ChartData {
+    name: string;
+    progress: number;
+    color: string;
+}
 
-export const ProjectChart: React.FC = () => {
+interface ProjectChartProps {
+    data: ChartData[];
+    onBarClick?: (projectName: string) => void;
+}
+
+export const ProjectChart: React.FC<ProjectChartProps> = ({ data, onBarClick }) => {
+
+
     return (
         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 min-h-[350px] transition-colors">
             <div className="mb-6">
@@ -37,9 +42,38 @@ export const ProjectChart: React.FC = () => {
                             cursor={{ fill: '#f9fafb' }}
                             contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                         />
-                        <Bar dataKey="progress" radius={[0, 4, 4, 0]} barSize={32}>
+                        {/* Invisible bar for click detection on 0% progress */}
+                        <Bar
+                            dataKey="progress"
+                            barSize={32}
+                            minPointSize={100}
+                            fill="transparent"
+                            onClick={(data) => {
+                                if (onBarClick && data && data.name) {
+                                    onBarClick(data.name);
+                                }
+                            }}
+                            style={{ cursor: 'pointer' }}
+                        />
+                        {/* Visible bar */}
+                        <Bar
+                            dataKey="progress"
+                            radius={[0, 4, 4, 0]}
+                            barSize={32}
+                            background={{ fill: '#f3f4f6', radius: 4 }}
+                            onClick={(data) => {
+                                if (onBarClick && data && data.name) {
+                                    onBarClick(data.name);
+                                }
+                            }}
+                            style={{ cursor: 'pointer' }}
+                        >
                             {data.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                <Cell
+                                    key={`cell-${index}`}
+                                    fill={entry.color}
+                                    style={{ cursor: 'pointer' }}
+                                />
                             ))}
                         </Bar>
                     </BarChart>

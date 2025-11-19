@@ -9,9 +9,10 @@ interface KPICardProps {
     trend?: 'up' | 'down' | 'neutral';
     icon: LucideIcon;
     className?: string;
+    onIconClick?: () => void;
 }
 
-export const KPICard: React.FC<KPICardProps> = ({ title, value, change, trend, icon: Icon, className }) => {
+export const KPICard: React.FC<KPICardProps> = ({ title, value, change, trend, icon: Icon, className, onIconClick }) => {
     return (
         <div className={clsx("bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-between h-full transition-colors", className)}>
             <div className="flex items-start justify-between mb-4">
@@ -19,7 +20,13 @@ export const KPICard: React.FC<KPICardProps> = ({ title, value, change, trend, i
                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">{title}</p>
                     <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{value}</h3>
                 </div>
-                <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400">
+                <div
+                    onClick={onIconClick}
+                    className={clsx(
+                        "p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400",
+                        onIconClick && "cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                    )}
+                >
                     <Icon size={20} />
                 </div>
             </div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
-import { Clock, MoreHorizontal, Plus, Trash } from 'lucide-react';
+import { Clock, MoreHorizontal, Plus, Trash, CheckSquare } from 'lucide-react';
 import type { Task, TaskStatus } from '../types';
 import { cn } from '../lib/utils';
 
@@ -93,9 +93,19 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, onDragEnd, onAd
                                                             </div>
                                                             <h4 className="font-medium text-gray-900 dark:text-white mb-1">{task.title}</h4>
                                                             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{task.project}</p>
-                                                            <div className="flex items-center text-xs text-gray-400 gap-1">
-                                                                <Clock size={12} />
-                                                                <span>{task.due}</span>
+                                                            <div className="flex items-center justify-between mt-3">
+                                                                <div className="flex items-center text-xs text-gray-400 gap-1">
+                                                                    <Clock size={12} />
+                                                                    <span>{task.due_date}</span>
+                                                                </div>
+                                                                {task.subtasks && task.subtasks.length > 0 && (
+                                                                    <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 gap-1 bg-gray-100 dark:bg-gray-600 px-1.5 py-0.5 rounded">
+                                                                        <CheckSquare size={12} />
+                                                                        <span>
+                                                                            {task.subtasks.filter(s => s.is_completed).length}/{task.subtasks.length}
+                                                                        </span>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     )}
