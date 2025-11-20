@@ -91,7 +91,7 @@ export const AttentionWidget: React.FC<AttentionWidgetProps> = ({ tasks, onTaskC
                 "text-xs px-1.5 py-0.5 rounded font-medium shrink-0",
                 task.priority === 'high' ? "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400" :
                   task.priority === 'medium' ? "bg-yellow-50 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400" :
-                    "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400"
+                    "bg-cyan-50 text-cyan-700 dark:bg-blue-900/20 dark:text-blue-400"
               )}>
                 {task.priority}
               </div>

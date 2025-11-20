@@ -28,7 +28,7 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onComplete, onAddClic
                 </div>
                 <button
                     onClick={onAddClick}
-                    className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                    className="p-2 text-cyan-500 dark:text-blue-400 hover:bg-cyan-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
                     title="Add Task"
                 >
                     <Plus size={20} />
@@ -68,7 +68,7 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onComplete, onAddClic
                                         <h4 className="text-sm font-medium text-gray-900 dark:text-gray-200 truncate">{task.title}</h4>
                                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${task.priority === 'high' ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400' :
                                             task.priority === 'medium' ? 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400' :
-                                                'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
+                                                'bg-cyan-50 text-cyan-700 dark:bg-blue-900/20 dark:text-blue-400'
                                             }`}>
                                             {task.priority}
                                         </span>

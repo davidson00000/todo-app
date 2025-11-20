@@ -42,3 +42,24 @@ export interface Project {
     scope?: string;
     goal?: string;
 }
+
+export interface UserProfile {
+    id: string;
+    display_name?: string;
+    avatar_url?: string;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface Canvas {
+    id: string;
+    user_id: string;
+    name: string;
+    data?: any; // Legacy
+    nodes?: any;
+    edges?: any;
+    settings?: any;
+    nextId?: number;
+    created_at: string;
+    updated_at: string;
+}

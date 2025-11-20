@@ -85,7 +85,7 @@ export const TodayActionWidget: React.FC<TodayActionWidgetProps> = ({ tasks, onR
                                 </div>
                                 <button
                                     onClick={() => handleToggle(s)}
-                                    className="flex-shrink-0 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium"
+                                    className="flex-shrink-0 px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-500 transition-colors text-sm font-medium"
                                 >
                                     Done
                                 </button>

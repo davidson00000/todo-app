@@ -1,41 +1,42 @@
 import { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import type { DropResult } from '@hello-pangea/dnd';
+import type { Session } from '@supabase/supabase-js';
 import { Layout } from './components/Layout';
-import { KPICard } from './components/KPICard';
-import { ProjectChart } from './components/ProjectChart';
-import { KanbanBoard } from './components/KanbanBoard';
-import { AddTaskModal } from './components/AddTaskModal';
-import { AddProjectModal } from './components/AddProjectModal';
-import { ManageProjectsModal } from './components/ManageProjectsModal';
-import { ProjectDetailsModal } from './components/ProjectDetailsModal';
+import { SideNav } from './components/SideNav';
+import { SettingsModal } from './components/SettingsModal';
+import { Login } from './components/Login';
 import { ThemeProvider } from './components/ThemeProvider';
-import { ListTodo, CheckCircle, Plus, Grid } from 'lucide-react';
-import type { Task, TaskStatus, Project, TaskPriority } from './types';
+import { Dashboard } from './pages/Dashboard';
+import { IdeaCanvas } from './pages/IdeaCanvas';
+import { Menu } from 'lucide-react';
+import { cn } from './lib/utils';
+import type { Task, TaskStatus, Project, TaskPriority, UserProfile } from './types';
 import { supabase } from './lib/supabase';
 import { formatDate } from './lib/dateUtils';
 
-import { AttentionWidget } from './components/AttentionWidget';
-import { TodayActionWidget } from './components/TodayActionWidget';
-import { GanttView } from './components/GanttView';
-
 function App() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isManageProjectsModalOpen, setIsManageProjectsModalOpen] = useState(false);
   const [isProjectDetailsModalOpen, setIsProjectDetailsModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [completedCount, setCompletedCount] = useState(0);
   const [view, setView] = useState<'board' | 'gantt'>('board');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // ---------- Data fetching ----------
   const fetchTasks = async () => {
     const { data, error } = await supabase
       .from('tasks')
-      .select('*, subtasks(*)')
+      .select('*, subtasks(*), attachments(*)')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -51,6 +52,7 @@ function App() {
         start_date: t.start_date,
         description: t.description,
         subtasks: t.subtasks || [],
+        attachments: t.attachments || [],
       }));
       setTasks(mappedTasks);
     }
@@ -69,10 +71,55 @@ function App() {
     }
   };
 
+  const fetchUserProfile = async () => {
+    if (!session?.user) return;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', session.user.id)
+      .single();
+
+    if (error) {
+      console.error('Error fetching profile:', error);
+      if (error.code === 'PGRST116') {
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert([{ id: session.user.id }]);
+
+        if (insertError) {
+          console.error('Error creating profile:', insertError);
+        } else {
+          fetchUserProfile();
+        }
+      }
+    } else if (data) {
+      setUserProfile(data);
+    }
+  };
+
+  // ---------- Auth state listener ----------
   useEffect(() => {
-    fetchTasks();
-    fetchProjects();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (session) {
+      fetchTasks();
+      fetchProjects();
+      fetchUserProfile();
+    }
+  }, [session]);
 
   // ---------- KPI count ----------
   useEffect(() => {
@@ -86,12 +133,10 @@ function App() {
     const { source, destination } = result;
     if (source.droppableId === destination.droppableId && source.index === destination.index) return;
 
-    // Moving between columns → update status
     if (source.droppableId !== destination.droppableId) {
       const newStatus = destination.droppableId as TaskStatus;
       const taskId = result.draggableId;
 
-      // Optimistic UI update
       setTasks((prev) =>
         prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
       );
@@ -99,14 +144,12 @@ function App() {
       const { error } = await supabase.from('tasks').update({ status: newStatus }).eq('id', taskId);
       if (error) {
         console.error('Error updating task status:', error);
-        fetchTasks(); // revert on error
+        fetchTasks();
       }
     }
   };
 
   const handleSaveTask = async (taskData: Omit<Task, 'id'> | { title: string; project: string; due_date: string; start_date?: string; description?: string; priority: TaskPriority; status: TaskStatus; subtasks?: any[] }) => {
-    // Extract subtasks to avoid sending them to tasks table
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { subtasks, ...taskFields } = taskData as any;
 
     if (editingTask) {
@@ -116,18 +159,26 @@ function App() {
         start_date: formatDate(taskFields.start_date),
       } as any;
 
-      const { error } = await supabase
-        .from('tasks')
-        .update(formattedFields)
-        .eq('id', editingTask.id);
+      const { error } = await supabase.from('tasks').update(formattedFields).eq('id', editingTask.id);
 
       if (error) {
         console.error('Error updating task:', error);
-        alert('Failed to update task');
+        alert('Failed to update task. Please try again.');
       } else {
-        fetchTasks();
-        setIsModalOpen(false); // Changed from setIsAddTaskModalOpen to setIsModalOpen
+        if (subtasks && subtasks.length > 0) {
+          for (const subtask of subtasks) {
+            if (!subtask.id || subtask.id.startsWith('temp-')) {
+              await supabase.from('subtasks').insert([{
+                task_id: editingTask.id,
+                title: subtask.title,
+                is_completed: subtask.is_completed,
+                due_date: subtask.due_date || null,
+              }]);
+            }
+          }
+        }
         setEditingTask(null);
+        fetchTasks();
       }
     } else {
       const formattedFields = {
@@ -136,35 +187,22 @@ function App() {
         start_date: formatDate(taskFields.start_date),
       } as any;
 
-      const { data: newTask, error } = await supabase
-        .from('tasks')
-        .insert([formattedFields])
-        .select()
-        .single();
+      const { data: newTask, error } = await supabase.from('tasks').insert([formattedFields]).select().single();
 
       if (error) {
-        console.error('Error adding task:', error);
-        alert('Failed to add task');
-      } else if (newTask) {
-        // Insert subtasks if any (for new task)
-        if (subtasks && subtasks.length > 0) {
-          const subtasksToInsert = subtasks.map((s: any) => ({
-            task_id: newTask.id,
-            title: s.title,
-            is_completed: s.is_completed || false
-          }));
-
-          const { error: subtaskError } = await supabase
-            .from('subtasks')
-            .insert(subtasksToInsert);
-
-          if (subtaskError) {
-            console.error('Error adding subtasks:', subtaskError);
-          }
-        }
-
+        console.error('Error creating task:', error);
+        alert('Failed to create task. Please try again.');
+      } else if (newTask && subtasks && subtasks.length > 0) {
+        const subtasksToInsert = subtasks.map((s: any) => ({
+          task_id: newTask.id,
+          title: s.title,
+          is_completed: s.is_completed,
+          due_date: s.due_date || null,
+        }));
+        await supabase.from('subtasks').insert(subtasksToInsert);
         fetchTasks();
-        setIsModalOpen(false); // Changed from setIsAddTaskModalOpen to setIsModalOpen
+      } else {
+        fetchTasks();
       }
     }
   };
@@ -210,29 +248,15 @@ function App() {
   };
 
   const handleDeleteProject = async (project: Project) => {
-    if (!window.confirm(`Are you sure you want to delete "${project.name}"? All associated tasks will also be deleted.`)) return;
+    if (!window.confirm(`Delete project "${project.name}" and all its tasks?`)) return;
 
-    try {
-      // 1. Delete associated tasks
-      const { error: taskError } = await supabase.from('tasks').delete().eq('project', project.name);
-      if (taskError) {
-        throw new Error('Failed to delete project tasks: ' + taskError.message);
-      }
+    await supabase.from('tasks').delete().eq('project', project.name);
+    const { error } = await supabase.from('projects').delete().eq('id', project.id);
 
-      // 2. Delete project
-      const { error: projectError } = await supabase.from('projects').delete().eq('id', project.id);
-      if (projectError) {
-        throw new Error('Failed to delete project: ' + projectError.message);
-      }
-
-      // Success
-      alert('Project deleted successfully');
-      setIsManageProjectsModalOpen(false); // Close modal
+    if (error) console.error('Error deleting project:', error);
+    else {
       fetchProjects();
       fetchTasks();
-    } catch (error: any) {
-      console.error('Error deleting project:', error);
-      alert(error.message || 'An error occurred while deleting the project.');
     }
   };
 
@@ -246,6 +270,10 @@ function App() {
     const { error } = await supabase.from('tasks').delete().eq('id', task.id);
     if (error) console.error('Error deleting task:', error);
     else fetchTasks();
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
   };
 
   // ---------- Chart Data Calculation ----------
@@ -263,159 +291,96 @@ function App() {
   });
 
   // ---------- Render ----------
+  if (!session) {
+    return (
+      <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+        <Login />
+      </ThemeProvider>
+    );
+  }
+
   return (
-    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-      <Layout>
-        {/* Header with New Project Button */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+    <BrowserRouter>
+      <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+        <div className="flex h-screen w-screen overflow-hidden relative">
+          {/* Mobile Menu Trigger */}
           <button
-            onClick={() => setIsProjectModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium shadow-sm"
+            className="md:hidden absolute top-4 left-4 z-50 p-2 bg-slate-900 text-cyan-500 rounded-lg"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
-            <Plus size={16} />
-            New Project
+            <Menu size={24} />
           </button>
+
+          {/* Mobile Sidebar Overlay */}
+          {isMobileMenuOpen && (
+            <div
+              className="fixed inset-0 bg-black/50 z-40 md:hidden"
+              onClick={() => setIsMobileMenuOpen(false)}
+            />
+          )}
+
+          {/* Sidebar with mobile visibility logic */}
+          <div className={cn("md:block", isMobileMenuOpen ? "fixed inset-y-0 left-0 z-50 block" : "hidden")}>
+            <SideNav onOpenSettings={() => setIsSettingsModalOpen(true)} />
+          </div>
+
+          <div className="flex-1 min-w-0 flex flex-col w-full">
+            <Layout
+              userProfile={userProfile}
+              userEmail={session.user?.email || ''}
+              onOpenSettings={() => setIsSettingsModalOpen(true)}
+            >
+              <Routes>
+                <Route
+                  path="/"
+                  element={
+                    <Dashboard
+                      tasks={tasks}
+                      projects={projects}
+                      completedCount={completedCount}
+                      view={view}
+                      setView={setView}
+                      chartData={chartData}
+                      handleDragEnd={handleDragEnd}
+                      handleTaskClick={handleTaskClick}
+                      handleDeleteTask={handleDeleteTask}
+                      handleSaveTask={handleSaveTask}
+                      handleSaveProject={handleSaveProject}
+                      handleProjectClick={handleProjectClick}
+                      handleEditProject={handleEditProject}
+                      handleDeleteProject={handleDeleteProject}
+                      handleSignOut={handleSignOut}
+                      fetchTasks={fetchTasks}
+                      isModalOpen={isModalOpen}
+                      setIsModalOpen={setIsModalOpen}
+                      isProjectModalOpen={isProjectModalOpen}
+                      setIsProjectModalOpen={setIsProjectModalOpen}
+                      isManageProjectsModalOpen={isManageProjectsModalOpen}
+                      setIsManageProjectsModalOpen={setIsManageProjectsModalOpen}
+                      isProjectDetailsModalOpen={isProjectDetailsModalOpen}
+                      setIsProjectDetailsModalOpen={setIsProjectDetailsModalOpen}
+                      editingTask={editingTask}
+                      editingProject={editingProject}
+                      setEditingProject={setEditingProject}
+                      selectedProject={selectedProject}
+                    />
+                  }
+                />
+                <Route path="/canvas" element={<IdeaCanvas />} />
+              </Routes>
+            </Layout>
+
+            <SettingsModal
+              isOpen={isSettingsModalOpen}
+              onClose={() => setIsSettingsModalOpen(false)}
+              userProfile={userProfile}
+              userEmail={session.user?.email || ''}
+              onProfileUpdate={fetchUserProfile}
+            />
+          </div>
         </div>
-
-        {/* 4-Tier Grid Layout */}
-        <div className="grid grid-cols-12 gap-6">
-
-          {/* Tier 1: KPI Cards (Overview) */}
-          <div className="col-span-12 md:col-span-4">
-            <KPICard
-              title="Active Projects"
-              value={projects.length.toString()}
-              change="+2"
-              trend="up"
-              icon={Grid}
-              onIconClick={() => setIsManageProjectsModalOpen(true)}
-            />
-          </div>
-          <div className="col-span-12 md:col-span-4">
-            <KPICard
-              title="Pending Tasks"
-              value={tasks.filter((t) => t.status !== 'done').length}
-              change={tasks.length > 5 ? '+2' : '-1'}
-              trend={tasks.length > 5 ? 'down' : 'up'}
-              icon={ListTodo}
-            />
-          </div>
-          <div className="col-span-12 md:col-span-4">
-            <KPICard
-              title="Total Completed"
-              value={completedCount}
-              change="+12"
-              trend="up"
-              icon={CheckCircle}
-            />
-          </div>
-
-          {/* Tier 2: Action & Alerts (Priority) */}
-          <div className="col-span-12 md:col-span-6 h-full">
-            <div className="h-full">
-              <TodayActionWidget tasks={tasks} onRefresh={fetchTasks} onTaskClick={handleTaskClick} />
-            </div>
-          </div>
-          <div className="col-span-12 md:col-span-6 h-full">
-            <div className="h-full">
-              <AttentionWidget tasks={tasks} onTaskClick={handleTaskClick} />
-            </div>
-          </div>
-
-          {/* Tier 3: Main Workspace (Timeline) - Full Width */}
-          <div className="col-span-12">
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-              {/* View Toggle */}
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                  {view === 'board' ? 'Task Board' : 'Gantt Chart'}
-                </h2>
-                <div className="flex gap-2 bg-gray-100 dark:bg-gray-700 p-1 rounded-lg">
-                  <button
-                    onClick={() => setView('board')}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view === 'board'
-                      ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm'
-                      : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
-                      }`}
-                  >
-                    Board
-                  </button>
-                  <button
-                    onClick={() => setView('gantt')}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view === 'gantt'
-                      ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm'
-                      : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
-                      }`}
-                  >
-                    Gantt
-                  </button>
-                </div>
-              </div>
-
-              {/* Workspace Content with horizontal scroll for Gantt */}
-              <div className="overflow-x-auto min-h-[500px]">
-                {view === 'board' ? (
-                  <KanbanBoard
-                    tasks={tasks}
-                    onDragEnd={handleDragEnd}
-                    onAddClick={() => setIsModalOpen(true)}
-                    onTaskClick={handleTaskClick}
-                    onDeleteTask={handleDeleteTask}
-                  />
-                ) : (
-                  <GanttView tasks={tasks} onTaskClick={handleTaskClick} />
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Tier 4: Analytics (Analysis) - Full Width */}
-          <div className="col-span-12">
-            <div className="h-[300px]">
-              <ProjectChart data={chartData} onBarClick={handleProjectClick} />
-            </div>
-          </div>
-
-        </div>
-
-        <AddTaskModal
-          isOpen={isModalOpen}
-          onClose={() => {
-            setIsModalOpen(false);
-            fetchTasks();
-          }}
-          onSave={handleSaveTask}
-          initialTask={editingTask}
-          projects={projects}
-          onRefresh={fetchTasks}
-        />
-
-        <AddProjectModal
-          isOpen={isProjectModalOpen}
-          onClose={() => {
-            setIsProjectModalOpen(false);
-            setEditingProject(null);
-          }}
-          onSave={handleSaveProject}
-          initialProject={editingProject}
-        />
-
-        <ProjectDetailsModal
-          isOpen={isProjectDetailsModalOpen}
-          onClose={() => setIsProjectDetailsModalOpen(false)}
-          project={selectedProject}
-          onEdit={handleEditProject}
-        />
-
-        <ManageProjectsModal
-          isOpen={isManageProjectsModalOpen}
-          onClose={() => setIsManageProjectsModalOpen(false)}
-          projects={projects}
-          onDeleteProject={handleDeleteProject}
-        />
-      </Layout>
-    </ThemeProvider>
+      </ThemeProvider>
+    </BrowserRouter>
   );
 }
 

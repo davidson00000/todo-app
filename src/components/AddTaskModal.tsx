@@ -379,8 +379,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                                                     type="button"
                                                     onClick={() => handleToggleSubtask(subtask)}
                                                     className={cn(
-                                                        "text-gray-400 hover:text-blue-500 transition-colors",
-                                                        subtask.is_completed && "text-blue-500"
+                                                        "text-gray-400 hover:text-cyan-400 transition-colors",
+                                                        subtask.is_completed && "text-cyan-400"
                                                     )}
                                                 >
                                                     {subtask.is_completed ? <CheckSquare size={18} /> : <Square size={18} />}
@@ -446,14 +446,14 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                                         {attachments.map((attachment) => (
                                             <div key={attachment.id} className="flex items-center gap-3 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg group border border-gray-100 dark:border-gray-700">
                                                 <div className="p-2 bg-white dark:bg-gray-600 rounded-md shadow-sm">
-                                                    <File size={16} className="text-blue-500" />
+                                                    <File size={16} className="text-cyan-400" />
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <a
                                                         href={attachment.file_url}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 truncate block flex items-center gap-1"
+                                                        className="text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-cyan-500 dark:hover:text-blue-400 truncate block flex items-center gap-1"
                                                     >
                                                         {attachment.file_name}
                                                         <ExternalLink size={12} className="opacity-50" />
@@ -483,11 +483,11 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                                             />
                                             <div className={cn(
                                                 "border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center gap-2 transition-colors",
-                                                isUploading ? "bg-gray-50 dark:bg-gray-700/50" : "hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:border-blue-400 dark:hover:border-blue-500"
+                                                isUploading ? "bg-gray-50 dark:bg-gray-700/50" : "hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:border-cyan-300 dark:hover:border-cyan-400"
                                             )}>
                                                 {isUploading ? (
                                                     <>
-                                                        <Loader2 size={24} className="text-blue-500 animate-spin" />
+                                                        <Loader2 size={24} className="text-cyan-400 animate-spin" />
                                                         <span className="text-sm text-gray-500 dark:text-gray-400">Uploading...</span>
                                                     </>
                                                 ) : (
@@ -515,7 +515,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                                     </button>
                                     <button
                                         type="submit"
-                                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="px-4 py-2 text-sm font-medium text-white bg-cyan-500 hover:bg-cyan-600 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                         disabled={!title || !project || !dateStr}
                                     >
                                         {initialTask ? 'Save Changes' : 'Add Task'}

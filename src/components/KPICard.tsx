@@ -23,7 +23,7 @@ export const KPICard: React.FC<KPICardProps> = ({ title, value, change, trend, i
                 <div
                     onClick={onIconClick}
                     className={clsx(
-                        "p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400",
+                        "p-2 bg-cyan-50 dark:bg-blue-900/20 rounded-lg text-cyan-500 dark:text-blue-400",
                         onIconClick && "cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
                     )}
                 >

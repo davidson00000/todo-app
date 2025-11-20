@@ -96,7 +96,7 @@ export const GanttView: React.FC<GanttViewProps> = ({ tasks, onTaskClick }) => {
                     <button
                         onClick={() => setViewMode(ViewMode.Day)}
                         className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${viewMode === ViewMode.Day
-                            ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm'
+                            ? 'bg-white dark:bg-gray-600 text-cyan-500 dark:text-blue-400 shadow-sm'
                             : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
                             }`}
                     >
@@ -105,7 +105,7 @@ export const GanttView: React.FC<GanttViewProps> = ({ tasks, onTaskClick }) => {
                     <button
                         onClick={() => setViewMode(ViewMode.Week)}
                         className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${viewMode === ViewMode.Week
-                            ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm'
+                            ? 'bg-white dark:bg-gray-600 text-cyan-500 dark:text-blue-400 shadow-sm'
                             : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
                             }`}
                     >
@@ -114,7 +114,7 @@ export const GanttView: React.FC<GanttViewProps> = ({ tasks, onTaskClick }) => {
                     <button
                         onClick={() => setViewMode(ViewMode.Month)}
                         className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${viewMode === ViewMode.Month
-                            ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm'
+                            ? 'bg-white dark:bg-gray-600 text-cyan-500 dark:text-blue-400 shadow-sm'
                             : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
                             }`}
                     >

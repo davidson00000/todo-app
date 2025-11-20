@@ -14,7 +14,7 @@ interface KanbanBoardProps {
 
 const columns: { id: TaskStatus; title: string; color: string }[] = [
     { id: 'todo', title: 'To Do', color: 'bg-gray-100 dark:bg-gray-800' },
-    { id: 'in-progress', title: 'In Progress', color: 'bg-blue-50 dark:bg-blue-900/20' },
+    { id: 'in-progress', title: 'In Progress', color: 'bg-cyan-50 dark:bg-blue-900/20' },
     { id: 'done', title: 'Done', color: 'bg-green-50 dark:bg-green-900/20' },
 ];
 
@@ -25,7 +25,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, onDragEnd, onAd
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">Task Board</h2>
                 <button
                     onClick={onAddClick}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors text-sm font-medium"
+                    className="flex items-center gap-2 px-4 py-2 bg-cyan-500 text-white rounded-full hover:bg-cyan-600 transition-colors text-sm font-medium"
                 >
                     <Plus size={16} />
                     Add Task
@@ -33,12 +33,12 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, onDragEnd, onAd
             </div>
 
             <DragDropContext onDragEnd={onDragEnd}>
-                <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6 min-h-0">
+                <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0 w-full">
                     {columns.map((column) => {
                         const columnTasks = tasks.filter(task => task.status === column.id);
 
                         return (
-                            <div key={column.id} className={cn("flex flex-col rounded-xl p-4 min-h-[500px] h-fit", column.color)}>
+                            <div key={column.id} className={cn("flex flex-col rounded-xl p-4 min-h-[500px] h-fit w-full min-w-0", column.color)}>
                                 <div className="flex items-center justify-between mb-4">
                                     <div className="flex items-center gap-2">
                                         <h3 className="font-semibold text-gray-700 dark:text-gray-200">{column.title}</h3>
@@ -68,7 +68,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, onDragEnd, onAd
                                                             onClick={() => onTaskClick(task)}
                                                             style={{ ...provided.draggableProps.style }}
                                                             className={cn(
-                                                                "bg-white dark:bg-gray-700 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600 group hover:shadow-md transition-all cursor-pointer hover:border-blue-400 dark:hover:border-blue-500",
+                                                                "bg-white dark:bg-gray-700 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600 group hover:shadow-md transition-all cursor-pointer hover:border-cyan-300 dark:hover:border-cyan-400",
                                                                 snapshot.isDragging && "shadow-lg rotate-2 scale-105 z-50"
                                                             )}
                                                         >
@@ -77,7 +77,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, onDragEnd, onAd
                                                                     "text-xs px-2 py-0.5 rounded-full font-medium",
                                                                     task.priority === 'high' ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400' :
                                                                         task.priority === 'medium' ? 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400' :
-                                                                            'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
+                                                                            'bg-cyan-50 text-cyan-700 dark:bg-blue-900/20 dark:text-blue-400'
                                                                 )}>
                                                                     {task.priority}
                                                                 </span>

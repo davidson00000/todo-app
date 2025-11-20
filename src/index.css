@@ -7,3 +7,9 @@
     @apply bg-gray-50 text-gray-900;
   }
 }
+
+@layer utilities {
+  .font-cursive {
+    font-family: 'Comic Sans MS', 'Brush Script MT', cursive;
+  }
+}

@@ -47,7 +47,7 @@ export const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({ isOpen
                                             <span className={cn(
                                                 "text-xs px-2 py-0.5 rounded-full font-medium border",
                                                 project.status === 'Active' ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800" :
-                                                    project.status === 'Completed' ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800" :
+                                                    project.status === 'Completed' ? "bg-cyan-50 text-cyan-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800" :
                                                         project.status === 'On Hold' ? "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800" :
                                                             "bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600"
                                             )}>
@@ -57,7 +57,7 @@ export const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({ isOpen
                                                 "text-xs px-2 py-0.5 rounded-full font-medium border",
                                                 project.priority === 'High' ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800" :
                                                     project.priority === 'Medium' ? "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800" :
-                                                        "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800"
+                                                        "bg-cyan-50 text-cyan-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800"
                                             )}>
                                                 {project.priority || 'Medium'} Priority
                                             </span>
@@ -73,7 +73,7 @@ export const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({ isOpen
                             <div className="p-6 space-y-6 overflow-y-auto">
                                 {/* Deadline */}
                                 <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-100 dark:border-gray-700">
-                                    <div className="p-2 bg-white dark:bg-gray-700 rounded-lg shadow-sm text-blue-500 dark:text-blue-400">
+                                    <div className="p-2 bg-white dark:bg-gray-700 rounded-lg shadow-sm text-cyan-400 dark:text-blue-400">
                                         <Calendar size={20} />
                                     </div>
                                     <div>
@@ -136,7 +136,7 @@ export const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({ isOpen
                                 </button>
                                 <button
                                     onClick={() => onEdit(project)}
-                                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
+                                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-cyan-500 hover:bg-cyan-600 rounded-lg transition-colors shadow-sm"
                                 >
                                     <Edit2 size={16} />
                                     Edit Project
