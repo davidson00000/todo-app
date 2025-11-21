@@ -110,8 +110,8 @@ const CanvasSidebar: React.FC<CanvasSidebarProps> = ({
     return (
         <div
             className={`
-                fixed top-0 left-0 h-full bg-white dark:bg-slate-900 shadow-xl z-40 transition-all duration-300 ease-in-out flex flex-col border-r border-gray-200 dark:border-slate-800
-                ${isOpen ? 'w-64' : 'w-0'}
+                h-full bg-white dark:bg-slate-900 shadow-xl z-40 transition-all duration-300 ease-in-out flex flex-col
+                ${isOpen ? 'w-64 border-r border-gray-200 dark:border-slate-800' : 'w-0 overflow-hidden'}
             `}
         >
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-800">
@@ -242,8 +242,8 @@ const CanvasSidebar: React.FC<CanvasSidebarProps> = ({
                                 <button
                                     onClick={() => onVariantChange(BackgroundVariant.Dots)}
                                     className={`px-3 py-2 text-xs rounded border ${bgVariant === BackgroundVariant.Dots
-                                            ? 'bg-cyan-50 border-cyan-200 text-cyan-700 dark:bg-cyan-900/20 dark:border-cyan-800 dark:text-cyan-400'
-                                            : 'border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400'
+                                        ? 'bg-cyan-50 border-cyan-200 text-cyan-700 dark:bg-cyan-900/20 dark:border-cyan-800 dark:text-cyan-400'
+                                        : 'border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400'
                                         }`}
                                 >
                                     Dots
@@ -251,8 +251,8 @@ const CanvasSidebar: React.FC<CanvasSidebarProps> = ({
                                 <button
                                     onClick={() => onVariantChange(BackgroundVariant.Lines)}
                                     className={`px-3 py-2 text-xs rounded border ${bgVariant === BackgroundVariant.Lines
-                                            ? 'bg-cyan-50 border-cyan-200 text-cyan-700 dark:bg-cyan-900/20 dark:border-cyan-800 dark:text-cyan-400'
-                                            : 'border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400'
+                                        ? 'bg-cyan-50 border-cyan-200 text-cyan-700 dark:bg-cyan-900/20 dark:border-cyan-800 dark:text-cyan-400'
+                                        : 'border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400'
                                         }`}
                                 >
                                     Lines
