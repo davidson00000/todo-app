@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Save, FolderOpen, File, X, Loader2, Trash2 } from 'lucide-react';
+import { Plus, Save, FolderOpen, File, Loader2, Trash2, ChevronLeft } from 'lucide-react';
 import { BackgroundVariant } from '@xyflow/react';
 import { supabase } from '../../lib/supabase';
 import type { Canvas } from '../../types';
@@ -81,35 +81,36 @@ const CanvasSidebar: React.FC<CanvasSidebarProps> = ({
 
     const handleLoad = (canvas: Canvas) => {
         onLoad(canvas);
-        onClose();
+        // Don't auto-close on load to keep workflow smooth
     };
 
-    if (!isOpen) return null;
-
     return (
-        <div className="fixed inset-y-0 left-16 w-72 bg-white dark:bg-gray-800 shadow-xl z-50 border-r border-gray-200 dark:border-gray-700 transform transition-transform duration-200 ease-in-out flex flex-col">
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center flex-shrink-0">
-                <h2 className="font-semibold text-gray-900 dark:text-white">Canvas Menu</h2>
-                <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                    <X size={20} />
+        <div
+            className={`bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 flex flex-col transition-all duration-300 overflow-hidden ${isOpen ? 'w-64' : 'w-0'}`}
+        >
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-800 min-w-64">
+                <p className="text-xs text-gray-500 dark:text-slate-500">Canvas Menu</p>
+                <button
+                    onClick={onClose}
+                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg text-gray-600 dark:text-slate-400 hover:text-cyan-400 transition-colors"
+                    title="Hide sidebar"
+                >
+                    <ChevronLeft size={18} />
                 </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-6">
+            <div className="flex-1 overflow-y-auto p-4 space-y-6 min-w-64">
                 {/* File Management Section */}
                 <div className="space-y-4">
                     <button
-                        onClick={() => {
-                            onNew();
-                            onClose();
-                        }}
-                        className="w-full flex items-center gap-2 px-4 py-2 bg-cyan-50 dark:bg-blue-900/30 text-cyan-500 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+                        onClick={onNew}
+                        className="w-full flex items-center gap-2 px-4 py-2 bg-cyan-500 text-white rounded-full hover:bg-cyan-600 transition-colors text-sm font-medium shadow-sm"
                     >
-                        <Plus size={18} />
+                        <Plus size={16} />
                         New Canvas
                     </button>
 
-                    <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                    <div className="border-t border-gray-200 dark:border-slate-800 pt-4">
                         <div className="flex items-center justify-between mb-2">
                             <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Current: {currentCanvasName || 'Unsaved'}</h3>
                             <button
@@ -131,7 +132,7 @@ const CanvasSidebar: React.FC<CanvasSidebarProps> = ({
                                     value={saveName}
                                     onChange={(e) => setSaveName(e.target.value)}
                                     placeholder="Canvas Name"
-                                    className="flex-1 px-2 py-1 text-sm border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                    className="flex-1 px-2 py-1 text-sm border rounded dark:bg-slate-800 dark:border-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
                                     autoFocus
                                 />
                                 <button
@@ -161,7 +162,7 @@ const CanvasSidebar: React.FC<CanvasSidebarProps> = ({
                                     <button
                                         key={canvas.id}
                                         onClick={() => handleLoad(canvas)}
-                                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors text-left group"
+                                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left group"
                                     >
                                         <File size={16} className="text-gray-400 group-hover:text-cyan-400" />
                                         <span className="flex-1 truncate">{canvas.name}</span>
@@ -179,7 +180,7 @@ const CanvasSidebar: React.FC<CanvasSidebarProps> = ({
                 </div>
 
                 {/* Settings Section */}
-                <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+                <div className="border-t border-gray-200 dark:border-slate-800 pt-6">
                     <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Canvas Settings</h3>
 
                     {/* Background Pattern */}
@@ -190,7 +191,7 @@ const CanvasSidebar: React.FC<CanvasSidebarProps> = ({
                                 onClick={() => onVariantChange(BackgroundVariant.Dots)}
                                 className={`px-2 py-1.5 text-xs border rounded-md transition-colors ${bgVariant === BackgroundVariant.Dots
                                     ? 'bg-cyan-50 border-cyan-400 text-cyan-700 dark:bg-blue-900/30 dark:text-blue-300'
-                                    : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                    : 'border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800'
                                     }`}
                             >
                                 Dots
@@ -199,7 +200,7 @@ const CanvasSidebar: React.FC<CanvasSidebarProps> = ({
                                 onClick={() => onVariantChange(BackgroundVariant.Lines)}
                                 className={`px-2 py-1.5 text-xs border rounded-md transition-colors ${bgVariant === BackgroundVariant.Lines
                                     ? 'bg-cyan-50 border-cyan-400 text-cyan-700 dark:bg-blue-900/30 dark:text-blue-300'
-                                    : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                    : 'border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800'
                                     }`}
                             >
                                 Lines
@@ -208,7 +209,7 @@ const CanvasSidebar: React.FC<CanvasSidebarProps> = ({
                                 onClick={() => onVariantChange(BackgroundVariant.Cross)}
                                 className={`px-2 py-1.5 text-xs border rounded-md transition-colors ${bgVariant === BackgroundVariant.Cross
                                     ? 'bg-cyan-50 border-cyan-400 text-cyan-700 dark:bg-blue-900/30 dark:text-blue-300'
-                                    : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                    : 'border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800'
                                     }`}
                             >
                                 Cross
@@ -220,7 +221,7 @@ const CanvasSidebar: React.FC<CanvasSidebarProps> = ({
                     <div className="mb-6">
                         <label className="text-xs text-gray-500 dark:text-gray-400 block mb-2">Background Color</label>
                         <div className="flex items-center gap-3">
-                            <div className="relative w-8 h-8 rounded-full overflow-hidden border border-gray-200 dark:border-gray-600 shadow-sm">
+                            <div className="relative w-8 h-8 rounded-full overflow-hidden border border-gray-200 dark:border-slate-700 shadow-sm">
                                 <input
                                     type="color"
                                     value={bgColor}
@@ -228,7 +229,7 @@ const CanvasSidebar: React.FC<CanvasSidebarProps> = ({
                                     className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] p-0 border-0 cursor-pointer"
                                 />
                             </div>
-                            <span className="text-xs font-mono text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                            <span className="text-xs font-mono text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded">
                                 {bgColor}
                             </span>
                         </div>

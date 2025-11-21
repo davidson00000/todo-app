@@ -30,6 +30,28 @@ export interface Task {
     description?: string;
     subtasks?: Subtask[];
     attachments?: Attachment[];
+    milestone_id?: string;
+    dependencies?: string[];
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface TaskDependency {
+    id: string;
+    blocking_task_id: string;
+    dependent_task_id: string;
+    created_at: string;
+}
+
+export interface Milestone {
+    id: string;
+    project_id: string;
+    title: string;
+    deliverables?: string;
+    start_date?: string;
+    due_date?: string;
+    created_at?: string;
+    tasks?: Task[];
 }
 
 export interface Project {

@@ -2,20 +2,31 @@ import React, { useState, useEffect } from 'react';
 import { X, CheckSquare, Square, Trash2, Plus, Upload, File, Loader2, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import type { Task, TaskPriority, TaskStatus, Project, Subtask, Attachment } from '../types';
+import type { Task, TaskPriority, TaskStatus, Project, Subtask, Attachment, Milestone } from '../types';
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
 
 interface AddTaskModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (task: { title: string; project: string; due_date: string; start_date?: string; description?: string; priority: TaskPriority; status: TaskStatus; subtasks?: Omit<Subtask, 'id' | 'task_id' | 'created_at'>[] }) => void;
+    onSave: (task: { title: string; project: string; due_date: string; start_date?: string; description?: string; priority: TaskPriority; status: TaskStatus; milestone_id?: string | null; subtasks?: Omit<Subtask, 'id' | 'task_id' | 'created_at'>[]; dependencies?: string[] }) => void;
     initialTask?: Task | null;
     projects: Project[];
-    onRefresh: () => void;
+    milestones: Milestone[];
+    tasks?: Task[];
+    onRefresh?: () => void | Promise<void>;
 }
 
-export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave, initialTask, projects, onRefresh }) => {
+export const AddTaskModal: React.FC<AddTaskModalProps> = ({
+    isOpen,
+    onClose,
+    onSave,
+    initialTask,
+    projects = [],
+    milestones = [],
+    tasks = [],
+    onRefresh
+}) => {
     // ... existing state ...
     const [title, setTitle] = useState('');
     const [project, setProject] = useState('');
@@ -24,6 +35,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
     const [priority, setPriority] = useState<TaskPriority>('medium');
     const [status, setStatus] = useState<TaskStatus>('todo');
     const [description, setDescription] = useState('');
+    const [milestoneId, setMilestoneId] = useState<string>('');
 
     // Subtasks state
     const [subtasks, setSubtasks] = useState<Subtask[]>([]);
@@ -34,34 +46,41 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
     const [attachments, setAttachments] = useState<Attachment[]>([]);
     const [isUploading, setIsUploading] = useState(false);
 
+    const [blockingTaskIds, setBlockingTaskIds] = useState<string[]>([]);
+
     // ... existing useEffect ...
     useEffect(() => {
-        if (isOpen && initialTask) {
-            setTitle(initialTask.title);
-            setProject(initialTask.project);
-            // ... existing date parsing ...
-            // Dates are stored as YYYY-MM-DD; set directly
-            setDateStr(initialTask.due_date ?? '');
-            setStartDateStr(initialTask.start_date ?? '');
-            setPriority(initialTask.priority);
-            setStatus(initialTask.status);
-            setDescription(initialTask.description || '');
-            setDescription(initialTask.description || '');
-            setSubtasks(initialTask.subtasks || []);
-            setAttachments(initialTask.attachments || []);
-        } else if (isOpen && !initialTask) {
-            setTitle('');
-            setProject('');
-            setDateStr('');
-            setStartDateStr('');
-            setPriority('medium');
-            setStatus('todo');
-            setDescription('');
-            setDescription('');
-            setSubtasks([]);
-            setAttachments([]);
+        if (isOpen) {
+            if (initialTask) {
+                setTitle(initialTask.title);
+                setProject(initialTask.project);
+                // ... existing date parsing ...
+                // Dates are stored as YYYY-MM-DD; set directly
+                setDateStr(initialTask.due_date ?? '');
+                setStartDateStr(initialTask.start_date ?? '');
+                setPriority(initialTask.priority);
+                setStatus(initialTask.status);
+                setDescription(initialTask.description || '');
+                setSubtasks(initialTask.subtasks || []);
+                setAttachments(initialTask.attachments || []);
+                setMilestoneId(initialTask.milestone_id || '');
+                setBlockingTaskIds(initialTask.dependencies || []);
+            } else {
+                // Reset form
+                setTitle('');
+                setProject(projects.length > 0 ? projects[0].name : '');
+                setDateStr('');
+                setStartDateStr('');
+                setPriority('medium');
+                setStatus('todo');
+                setDescription('');
+                setSubtasks([]);
+                setAttachments([]);
+                setMilestoneId('');
+                setBlockingTaskIds([]);
+            }
         }
-    }, [isOpen, initialTask]);
+    }, [isOpen, initialTask, projects]);
 
     const handleAddSubtask = async () => {
         if (!newSubtaskTitle.trim()) return;
@@ -127,7 +146,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                         .from('tasks')
                         .update({ status: allDone ? 'done' : 'in-progress' })
                         .eq('id', initialTask.id);
-                    onRefresh();
+                    onRefresh?.();
                 }
             }
         } else {
@@ -244,37 +263,61 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
     };
 
     // ... existing handleSubmit ...
-    const handleSubmit = (e: React.FormEvent) => {
+    const [isSaving, setIsSaving] = useState(false);
+
+    // ...
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!dateStr) return;
 
-        // dateStr and startDateStr are already in YYYY-MM-DD format from the input fields
-        // Send these raw strings to Supabase; UI will format for display elsewhere
-        onSave({
-            title,
-            project,
-            due_date: dateStr, // raw YYYY-MM-DD
-            start_date: startDateStr || undefined,
-            description: description || undefined,
-            priority,
-            status,
-            subtasks: subtasks.map(s => ({ title: s.title, is_completed: s.is_completed, due_date: s.due_date }))
-        });
-        onClose();
-        if (onRefresh) onRefresh();
+        setIsSaving(true);
+        try {
+            // Debug log as requested
+            console.log('Saving Task - Selected Milestone:', milestoneId);
+
+            // Explicitly handle milestone_id logic
+            // If milestoneId is empty string or "no_milestone" (though we use empty string for that), send null
+            const finalMilestoneId = (!milestoneId || milestoneId === "no_milestone") ? null : milestoneId;
+
+            const payload = {
+                title,
+                project,
+                due_date: dateStr, // raw YYYY-MM-DD
+                start_date: startDateStr || undefined,
+                description: description || undefined,
+                priority,
+                status,
+                milestone_id: finalMilestoneId,
+                subtasks: subtasks.map(s => ({ title: s.title, is_completed: s.is_completed, due_date: s.due_date })),
+                dependencies: blockingTaskIds
+            };
+
+            console.log('Final Payload to Supabase:', payload);
+
+            await onSave(payload);
+            if (onRefresh) {
+                await onRefresh();
+            }
+            onClose();
+        } catch (error) {
+            console.error('Error saving task:', error);
+            alert('Failed to save task');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (
         <AnimatePresence>
             {isOpen && (
                 <>
-                    {/* ... backdrop ... */}
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
                     />
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -282,90 +325,161 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
                         className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
                     >
-                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md pointer-events-auto overflow-hidden transition-colors max-h-[90vh] overflow-y-auto">
+                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto pointer-events-auto border border-gray-100 dark:border-gray-700 flex flex-col">
                             <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
-                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                                    {initialTask ? 'Edit Task' : 'Add New Task'}
-                                </h3>
-                                <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                                    <X size={20} />
+                                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                                    {initialTask ? 'Edit Task' : 'New Task'}
+                                </h2>
+                                <button
+                                    onClick={onClose}
+                                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                                >
+                                    <X size={20} className="text-gray-500 dark:text-gray-400" />
                                 </button>
                             </div>
 
-                            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                                {/* Title Input */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Task Title</label>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        Task Title
+                                    </label>
                                     <input
                                         type="text"
-                                        required
                                         value={title}
                                         onChange={(e) => setTitle(e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                                        placeholder="e.g., Review Design Mockups"
+                                        className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none transition-all text-gray-900 dark:text-white placeholder-gray-400"
+                                        placeholder="What needs to be done?"
+                                        required
                                     />
                                 </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Project</label>
-                                    <select
-                                        required
-                                        value={project}
-                                        onChange={(e) => setProject(e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                                    >
-                                        <option value="" disabled>Select a project</option>
-                                        {projects.map((p) => (
-                                            <option key={p.id} value={p.name}>
-                                                {p.name}
-                                            </option>
-                                        ))}
-                                    </select>
+                                {/* Project & Milestone Selection */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Project
+                                        </label>
+                                        <select
+                                            value={project}
+                                            onChange={(e) => setProject(e.target.value)}
+                                            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none transition-all text-gray-900 dark:text-white"
+                                            required
+                                        >
+                                            <option value="" disabled>Select Project</option>
+                                            {projects.map((p) => (
+                                                <option key={p.id} value={p.name}>
+                                                    {p.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Milestone
+                                        </label>
+                                        <select
+                                            value={milestoneId}
+                                            onChange={(e) => setMilestoneId(e.target.value)}
+                                            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none transition-all text-gray-900 dark:text-white"
+                                        >
+                                            <option value="">No Milestone</option>
+                                            {milestones
+                                                .filter(m => !project || milestones.find(ms => ms.id === m.id)?.project_id === projects.find(p => p.name === project)?.id)
+                                                .map((m) => (
+                                                    <option key={m.id} value={m.id}>
+                                                        {m.title}
+                                                    </option>
+                                                ))}
+                                        </select>
+                                    </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="flex flex-col">
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date</label>
+                                {/* Dates & Priority */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Start Date
+                                        </label>
                                         <input
                                             type="date"
                                             value={startDateStr}
                                             onChange={(e) => setStartDateStr(e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                                            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none transition-all text-gray-900 dark:text-white"
                                         />
                                     </div>
-                                    <div className="flex flex-col">
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Due Date</label>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Due Date
+                                        </label>
                                         <input
                                             type="date"
-                                            required
                                             value={dateStr}
                                             onChange={(e) => setDateStr(e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                                            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none transition-all text-gray-900 dark:text-white"
+                                            required
                                         />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Priority
+                                        </label>
+                                        <select
+                                            value={priority}
+                                            onChange={(e) => setPriority(e.target.value as TaskPriority)}
+                                            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none transition-all text-gray-900 dark:text-white"
+                                        >
+                                            <option value="low">Low</option>
+                                            <option value="medium">Medium</option>
+                                            <option value="high">High</option>
+                                        </select>
                                     </div>
                                 </div>
 
+                                {/* Description */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Priority</label>
-                                    <select
-                                        value={priority}
-                                        onChange={(e) => setPriority(e.target.value as any)}
-                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                                    >
-                                        <option value="high">High</option>
-                                        <option value="medium">Medium</option>
-                                        <option value="low">Low</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        Description
+                                    </label>
                                     <textarea
                                         value={description}
                                         onChange={(e) => setDescription(e.target.value)}
                                         rows={3}
-                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors resize-none"
-                                        placeholder="Add task details..."
+                                        className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none transition-all text-gray-900 dark:text-white placeholder-gray-400"
+                                        placeholder="Add details about this task..."
                                     />
+                                </div>
+
+                                {/* Dependencies Section */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        Blocking Tasks (Dependencies)
+                                    </label>
+                                    <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg p-2 bg-gray-50 dark:bg-gray-900/50">
+                                        {tasks?.filter(t => t.id !== initialTask?.id).map(task => (
+                                            <label key={task.id} className="flex items-center gap-2 p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer transition-colors">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={blockingTaskIds.includes(task.id)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setBlockingTaskIds([...blockingTaskIds, task.id]);
+                                                        } else {
+                                                            setBlockingTaskIds(blockingTaskIds.filter(id => id !== task.id));
+                                                        }
+                                                    }}
+                                                    className="rounded border-gray-300 text-cyan-500 focus:ring-cyan-500"
+                                                />
+                                                <span className="text-sm text-gray-700 dark:text-gray-300 truncate">
+                                                    {task.title} <span className="text-xs text-gray-400">({task.status})</span>
+                                                </span>
+                                            </label>
+                                        ))}
+                                        {(!tasks || tasks.length === 0) && (
+                                            <p className="text-xs text-gray-500 text-center py-2">No other tasks available</p>
+                                        )}
+                                    </div>
                                 </div>
 
                                 {/* Checklist Section */}
@@ -515,10 +629,17 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                                     </button>
                                     <button
                                         type="submit"
-                                        className="px-4 py-2 text-sm font-medium text-white bg-cyan-500 hover:bg-cyan-600 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                        disabled={!title || !project || !dateStr}
+                                        className="px-4 py-2 text-sm font-medium text-white bg-cyan-500 hover:bg-cyan-600 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                        disabled={!title || !project || !dateStr || isSaving}
                                     >
-                                        {initialTask ? 'Save Changes' : 'Add Task'}
+                                        {isSaving ? (
+                                            <>
+                                                <Loader2 className="animate-spin" size={16} />
+                                                Saving...
+                                            </>
+                                        ) : (
+                                            initialTask ? 'Save Changes' : 'Add Task'
+                                        )}
                                     </button>
                                 </div>
                             </form>

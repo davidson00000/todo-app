@@ -6,10 +6,20 @@
   body {
     @apply bg-gray-50 text-gray-900;
   }
+
+  .dark body {
+    @apply bg-slate-950 text-slate-100;
+  }
 }
 
 @layer utilities {
   .font-cursive {
     font-family: 'Comic Sans MS', 'Brush Script MT', cursive;
   }
+}
+
+/* Fix calendar picker icon visibility in dark mode */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
 }

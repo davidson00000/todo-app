@@ -14,7 +14,7 @@ export const Header: React.FC<HeaderProps> = ({ userProfile, userEmail, onOpenSe
     const { theme, setTheme } = useTheme();
 
     return (
-        <header className="flex items-center justify-between px-6 py-4 bg-slate-900 border-b border-slate-800 transition-colors">
+        <header className="flex items-center justify-between px-6 py-4 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 transition-colors">
             <div className="flex items-center gap-2">
                 {/* Branding moved to Sidebar */}
             </div>

@@ -1,11 +1,12 @@
 import React from 'react';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { Clock, MoreHorizontal, Plus, Trash, CheckSquare } from 'lucide-react';
-import type { Task, TaskStatus } from '../types';
+import type { Task, TaskStatus, Milestone } from '../types';
 import { cn } from '../lib/utils';
 
 interface KanbanBoardProps {
     tasks: Task[];
+    milestones: Milestone[];
     onDragEnd: (result: DropResult) => void;
     onAddClick: () => void;
     onTaskClick: (task: Task) => void;
@@ -18,11 +19,11 @@ const columns: { id: TaskStatus; title: string; color: string }[] = [
     { id: 'done', title: 'Done', color: 'bg-green-50 dark:bg-green-900/20' },
 ];
 
-export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, onDragEnd, onAddClick, onTaskClick, onDeleteTask }) => {
+export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, milestones, onDragEnd, onAddClick, onTaskClick, onDeleteTask }) => {
     return (
         <div className="h-full flex flex-col mt-4">
-            <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Task Board</h2>
+            {/* Header with Add Task button */}
+            <div className="flex items-center justify-end mb-4">
                 <button
                     onClick={onAddClick}
                     className="flex items-center gap-2 px-4 py-2 bg-cyan-500 text-white rounded-full hover:bg-cyan-600 transition-colors text-sm font-medium"
@@ -35,7 +36,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, onDragEnd, onAd
             <DragDropContext onDragEnd={onDragEnd}>
                 <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0 w-full">
                     {columns.map((column) => {
-                        const columnTasks = tasks.filter(task => task.status === column.id);
+                        const columnTasks = tasks.filter((task: Task) => task.status === column.id);
 
                         return (
                             <div key={column.id} className={cn("flex flex-col rounded-xl p-4 min-h-[500px] h-fit w-full min-w-0", column.color)}>
@@ -92,7 +93,17 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, onDragEnd, onAd
                                                                 </button>
                                                             </div>
                                                             <h4 className="font-medium text-gray-900 dark:text-white mb-1">{task.title}</h4>
-                                                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{task.project}</p>
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <p className="text-xs text-gray-500 dark:text-gray-400">{task.project}</p>
+                                                                {task.milestone_id && (() => {
+                                                                    const milestone = milestones.find(m => m.id === task.milestone_id);
+                                                                    return milestone ? (
+                                                                        <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-medium">
+                                                                            🎯 {milestone.title}
+                                                                        </span>
+                                                                    ) : null;
+                                                                })()}
+                                                            </div>
                                                             <div className="flex items-center justify-between mt-3">
                                                                 <div className="flex items-center text-xs text-gray-400 gap-1">
                                                                     <Clock size={12} />

@@ -10,8 +10,9 @@ import { ThemeProvider } from './components/ThemeProvider';
 import { Dashboard } from './pages/Dashboard';
 import { IdeaCanvas } from './pages/IdeaCanvas';
 import { Menu } from 'lucide-react';
+import { Roadmap } from './pages/Roadmap';
 import { cn } from './lib/utils';
-import type { Task, TaskStatus, Project, TaskPriority, UserProfile } from './types';
+import type { Task, TaskStatus, Project, TaskPriority, UserProfile, Milestone } from './types';
 import { supabase } from './lib/supabase';
 import { formatDate } from './lib/dateUtils';
 
@@ -20,6 +21,7 @@ function App() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isManageProjectsModalOpen, setIsManageProjectsModalOpen] = useState(false);
@@ -36,7 +38,7 @@ function App() {
   const fetchTasks = async () => {
     const { data, error } = await supabase
       .from('tasks')
-      .select('*, subtasks(*), attachments(*)')
+      .select('*, subtasks(*), attachments(*), milestones(id, title), task_dependencies!dependent_task_id(blocking_task_id)')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -53,6 +55,10 @@ function App() {
         description: t.description,
         subtasks: t.subtasks || [],
         attachments: t.attachments || [],
+        milestone_id: t.milestone_id, // Ensure this is mapped
+        dependencies: t.task_dependencies?.map((d: any) => d.blocking_task_id) || [],
+        created_at: t.created_at,
+        updated_at: t.updated_at
       }));
       setTasks(mappedTasks);
     }
@@ -98,6 +104,19 @@ function App() {
     }
   };
 
+  const fetchMilestones = async () => {
+    const { data, error } = await supabase
+      .from('milestones')
+      .select('*, tasks(*)')
+      .order('due_date', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching milestones:', error);
+    } else if (data) {
+      setMilestones(data);
+    }
+  };
+
   // ---------- Auth state listener ----------
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -117,6 +136,7 @@ function App() {
     if (session) {
       fetchTasks();
       fetchProjects();
+      fetchMilestones();
       fetchUserProfile();
     }
   }, [session]);
@@ -149,8 +169,8 @@ function App() {
     }
   };
 
-  const handleSaveTask = async (taskData: Omit<Task, 'id'> | { title: string; project: string; due_date: string; start_date?: string; description?: string; priority: TaskPriority; status: TaskStatus; subtasks?: any[] }) => {
-    const { subtasks, ...taskFields } = taskData as any;
+  const handleSaveTask = async (taskData: Omit<Task, 'id'> | { title: string; project: string; due_date: string; start_date?: string; description?: string; priority: TaskPriority; status: TaskStatus; milestone_id?: string | null; subtasks?: any[]; dependencies?: string[] }) => {
+    const { subtasks, dependencies, ...taskFields } = taskData as any;
 
     if (editingTask) {
       const formattedFields = {
@@ -165,24 +185,38 @@ function App() {
         console.error('Error updating task:', error);
         alert('Failed to update task. Please try again.');
       } else {
-        if (subtasks && subtasks.length > 0) {
-          for (const subtask of subtasks) {
-            if (!subtask.id || subtask.id.startsWith('temp-')) {
-              await supabase.from('subtasks').insert([{
-                task_id: editingTask.id,
-                title: subtask.title,
-                is_completed: subtask.is_completed,
-                due_date: subtask.due_date || null,
-              }]);
-            }
+        // Handle dependencies
+        if (dependencies) {
+          await supabase.from('task_dependencies').delete().eq('dependent_task_id', editingTask.id);
+          if (dependencies.length > 0) {
+            const depRows = dependencies.map((blockingId: string) => ({
+              blocking_task_id: blockingId,
+              dependent_task_id: editingTask.id
+            }));
+            await supabase.from('task_dependencies').insert(depRows);
           }
         }
-        setEditingTask(null);
+
+        // Handle subtasks
+        if (subtasks) {
+          await supabase.from('subtasks').delete().eq('task_id', editingTask.id);
+          if (subtasks.length > 0) {
+            const subtasksToInsert = subtasks.map((s: any) => ({
+              task_id: editingTask.id,
+              title: s.title,
+              is_completed: s.is_completed,
+              due_date: s.due_date || null,
+            }));
+            await supabase.from('subtasks').insert(subtasksToInsert);
+          }
+        }
         fetchTasks();
+        setEditingTask(null);
       }
     } else {
       const formattedFields = {
         ...taskFields,
+        user_id: session?.user.id,
         due_date: formatDate(taskFields.due_date),
         start_date: formatDate(taskFields.start_date),
       } as any;
@@ -192,16 +226,26 @@ function App() {
       if (error) {
         console.error('Error creating task:', error);
         alert('Failed to create task. Please try again.');
-      } else if (newTask && subtasks && subtasks.length > 0) {
-        const subtasksToInsert = subtasks.map((s: any) => ({
-          task_id: newTask.id,
-          title: s.title,
-          is_completed: s.is_completed,
-          due_date: s.due_date || null,
-        }));
-        await supabase.from('subtasks').insert(subtasksToInsert);
-        fetchTasks();
-      } else {
+      } else if (newTask) {
+        // Handle dependencies
+        if (dependencies && dependencies.length > 0) {
+          const depRows = dependencies.map((blockingId: string) => ({
+            blocking_task_id: blockingId,
+            dependent_task_id: newTask.id
+          }));
+          await supabase.from('task_dependencies').insert(depRows);
+        }
+
+        // Handle subtasks
+        if (subtasks && subtasks.length > 0) {
+          const subtasksToInsert = subtasks.map((s: any) => ({
+            task_id: newTask.id,
+            title: s.title,
+            is_completed: s.is_completed,
+            due_date: s.due_date || null,
+          }));
+          await supabase.from('subtasks').insert(subtasksToInsert);
+        }
         fetchTasks();
       }
     }
@@ -232,13 +276,6 @@ function App() {
     }
   };
 
-  const handleProjectClick = (projectName: string) => {
-    const project = projects.find((p) => p.name === projectName);
-    if (project) {
-      setSelectedProject(project);
-      setIsProjectDetailsModalOpen(true);
-    }
-  };
 
   const handleEditProject = (project: Project) => {
     setSelectedProject(null);
@@ -276,19 +313,6 @@ function App() {
     await supabase.auth.signOut();
   };
 
-  // ---------- Chart Data Calculation ----------
-  const chartData = projects.map((project) => {
-    const projectTasks = tasks.filter((t) => t.project === project.name);
-    const total = projectTasks.length;
-    const completed = projectTasks.filter((t) => t.status === 'done').length;
-    const progress = total === 0 ? 0 : Math.round((completed / total) * 100);
-
-    return {
-      name: project.name,
-      progress,
-      color: project.color,
-    };
-  });
 
   // ---------- Render ----------
   if (!session) {
@@ -337,16 +361,15 @@ function App() {
                     <Dashboard
                       tasks={tasks}
                       projects={projects}
+                      milestones={milestones}
                       completedCount={completedCount}
                       view={view}
                       setView={setView}
-                      chartData={chartData}
                       handleDragEnd={handleDragEnd}
                       handleTaskClick={handleTaskClick}
                       handleDeleteTask={handleDeleteTask}
                       handleSaveTask={handleSaveTask}
                       handleSaveProject={handleSaveProject}
-                      handleProjectClick={handleProjectClick}
                       handleEditProject={handleEditProject}
                       handleDeleteProject={handleDeleteProject}
                       handleSignOut={handleSignOut}
@@ -363,6 +386,30 @@ function App() {
                       editingProject={editingProject}
                       setEditingProject={setEditingProject}
                       selectedProject={selectedProject}
+                    />
+                  }
+                />
+                <Route
+                  path="/roadmap"
+                  element={
+                    <Roadmap
+                      projects={projects}
+                      milestones={milestones}
+                      tasks={tasks}
+                      onAddMilestone={async (m: Omit<Milestone, 'id' | 'created_at'>) => {
+                        const { error } = await supabase.from('milestones').insert([m]);
+                        if (error) console.error(error);
+                        else fetchMilestones();
+                      }}
+                      onDeleteMilestone={async (id: string) => {
+                        const { error } = await supabase.from('milestones').delete().eq('id', id);
+                        if (error) console.error(error);
+                        else fetchMilestones();
+                      }}
+                      onSaveTask={handleSaveTask}
+                      onRefreshTasks={async () => {
+                        await Promise.all([fetchTasks(), fetchMilestones()]);
+                      }}
                     />
                   }
                 />

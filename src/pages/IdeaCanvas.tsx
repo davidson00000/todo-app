@@ -15,11 +15,13 @@ import {
     type ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Menu } from 'lucide-react';
+import { Sun, Moon, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import StickyNode from '../components/canvas/StickyNode';
 import ImageNode from '../components/canvas/ImageNode';
 import CanvasSidebar from '../components/canvas/CanvasSidebar';
 import { supabase } from '../lib/supabase';
+import { useTheme } from '../components/ThemeProvider';
 import type { Canvas } from '../types';
 
 const nodeTypes: NodeTypes = {
@@ -41,8 +43,14 @@ export const IdeaCanvas: React.FC = () => {
     const [nodeId, setNodeId] = useState(0);
 
     // UI State
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [currentCanvas, setCurrentCanvas] = useState<Canvas | null>(null);
+
+    // Theme
+    const { theme, setTheme } = useTheme();
+
+    // Navigation
+    const navigate = useNavigate();
 
     // Canvas Settings State
     const [bgVariant, setBgVariant] = useState<BackgroundVariant>(BackgroundVariant.Dots);
@@ -286,13 +294,21 @@ export const IdeaCanvas: React.FC = () => {
     // File Management Functions
     const handleNewCanvas = () => {
         if (window.confirm('Create new canvas? Unsaved changes will be lost.')) {
+            // Clear canvas state
             setNodes([]);
             setEdges([]);
             setNodeId(0);
             setCurrentCanvas(null);
+
+            // Reset canvas settings to defaults
             setBgVariant(BackgroundVariant.Dots);
             setBgColor('#f9fafb');
+
+            // Clear local storage
             localStorage.removeItem(STORAGE_KEY);
+
+            // Clear URL parameters (navigate to clean /canvas route)
+            navigate('/canvas', { replace: true });
         }
     };
 
@@ -376,23 +392,7 @@ export const IdeaCanvas: React.FC = () => {
     };
 
     return (
-        <div className="w-full h-full overflow-hidden relative" style={{ backgroundColor: bgColor }}>
-            {/* Header / Toolbar */}
-            <div className="absolute top-4 left-4 z-50 flex gap-2">
-                <button
-                    onClick={() => setIsSidebarOpen(true)}
-                    className="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                    title="Menu"
-                >
-                    <Menu size={20} className="text-gray-700 dark:text-gray-200" />
-                </button>
-                <div className="px-4 py-2 bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 flex items-center">
-                    <span className="font-medium text-gray-700 dark:text-gray-200">
-                        {currentCanvas ? currentCanvas.name : 'Untitled Canvas'}
-                    </span>
-                </div>
-            </div>
-
+        <div className="w-full h-full flex overflow-hidden" style={{ backgroundColor: bgColor }}>
             <CanvasSidebar
                 isOpen={isSidebarOpen}
                 onClose={() => setIsSidebarOpen(false)}
@@ -407,27 +407,54 @@ export const IdeaCanvas: React.FC = () => {
                 onClear={handleClearAll}
             />
 
-            <div className="h-full w-full" ref={reactFlowWrapper}>
-                <ReactFlow
-                    nodes={nodes}
-                    edges={edges}
-                    onNodesChange={onNodesChange}
-                    onEdgesChange={onEdgesChange}
-                    onConnect={onConnect}
-                    onInit={setReactFlowInstance}
-                    onPaneClick={onPaneClick}
-                    onDrop={onDrop}
-                    onDragOver={onDragOver}
-                    nodeTypes={nodeTypes}
-                    deleteKeyCode={['Backspace', 'Delete']}
-                    fitView
-                    minZoom={0.1}
-                    maxZoom={4}
-                >
-                    <Controls />
-                    <MiniMap />
-                    <Background variant={bgVariant} gap={16} size={1} />
-                </ReactFlow>
+            <div className="flex-1 h-full relative overflow-hidden">
+                {/* Header / Toolbar */}
+                <div className="absolute top-4 left-4 z-50 flex gap-2">
+                    {!isSidebarOpen && (
+                        <button
+                            onClick={() => setIsSidebarOpen(true)}
+                            className="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                            title="Show Menu"
+                        >
+                            <ChevronRight size={20} className="text-gray-700 dark:text-gray-200" />
+                        </button>
+                    )}
+                    <button
+                        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                        className="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                        title="Toggle Theme"
+                    >
+                        {theme === 'dark' ? <Sun size={20} className="text-gray-700 dark:text-gray-200" /> : <Moon size={20} className="text-gray-700 dark:text-gray-200" />}
+                    </button>
+                    <div className="px-4 py-2 bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 flex items-center">
+                        <span className="font-medium text-gray-700 dark:text-gray-200">
+                            {currentCanvas ? currentCanvas.name : 'Untitled Canvas'}
+                        </span>
+                    </div>
+                </div>
+
+                <div className="h-full w-full" ref={reactFlowWrapper}>
+                    <ReactFlow
+                        nodes={nodes}
+                        edges={edges}
+                        onNodesChange={onNodesChange}
+                        onEdgesChange={onEdgesChange}
+                        onConnect={onConnect}
+                        onInit={setReactFlowInstance}
+                        onPaneClick={onPaneClick}
+                        onDrop={onDrop}
+                        onDragOver={onDragOver}
+                        nodeTypes={nodeTypes}
+                        deleteKeyCode={['Backspace', 'Delete']}
+                        fitView
+                        minZoom={0.1}
+                        maxZoom={4}
+                    >
+                        <Controls />
+                        <MiniMap />
+                        <Background variant={bgVariant} gap={16} size={1} />
+                    </ReactFlow>
+                </div>
             </div>
         </div>
     );

@@ -3,14 +3,16 @@ import { Gantt, ViewMode } from 'gantt-task-react';
 import type { Task as GanttTask } from 'gantt-task-react';
 import 'gantt-task-react/dist/index.css';
 import type { Task } from '../types';
-import { parse, addDays } from 'date-fns';
+import { supabase } from '../lib/supabase';
+import { parse, addDays, format } from 'date-fns';
 
 interface GanttViewProps {
     tasks: Task[];
     onTaskClick?: (task: Task) => void;
+    onTaskUpdate?: () => void;
 }
 
-export const GanttView: React.FC<GanttViewProps> = ({ tasks, onTaskClick }) => {
+export const GanttView: React.FC<GanttViewProps> = ({ tasks, onTaskClick, onTaskUpdate }) => {
     const ganttTasks = useMemo<GanttTask[]>(() => {
         return tasks.map((task) => {
             // Helper to safely parse dates; fallback to today if invalid
@@ -51,7 +53,7 @@ export const GanttView: React.FC<GanttViewProps> = ({ tasks, onTaskClick }) => {
                 progress,
                 type: 'task' as const,
                 project: task.project,
-                dependencies: [],
+                dependencies: task.dependencies || [],
                 hideChildren: false,
                 styles: {
                     backgroundColor:
@@ -67,9 +69,30 @@ export const GanttView: React.FC<GanttViewProps> = ({ tasks, onTaskClick }) => {
         });
     }, [tasks]);
 
-    const handleTaskChange = (task: GanttTask) => {
-        console.log('Task changed:', task);
-        // Implement update logic if needed
+    const handleTaskChange = async (task: GanttTask) => {
+        try {
+            const newStartDate = format(task.start, 'yyyy-MM-dd');
+            const newDueDate = format(task.end, 'yyyy-MM-dd');
+
+            const { error } = await supabase
+                .from('tasks')
+                .update({
+                    start_date: newStartDate,
+                    due_date: newDueDate
+                })
+                .eq('id', task.id);
+
+            if (error) {
+                console.error('Failed to update task dates:', error);
+                alert('Failed to update task dates');
+            } else {
+                if (onTaskUpdate) {
+                    onTaskUpdate();
+                }
+            }
+        } catch (error) {
+            console.error('Error updating task dates:', error);
+        }
     };
 
     const handleDoubleClick = (task: GanttTask) => {

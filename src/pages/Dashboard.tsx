@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { KPICard } from '../components/KPICard';
 import { ProjectChart } from '../components/ProjectChart';
 import { KanbanBoard } from '../components/KanbanBoard';
@@ -9,22 +9,23 @@ import { ProjectDetailsModal } from '../components/ProjectDetailsModal';
 import { AttentionWidget } from '../components/AttentionWidget';
 import { TodayActionWidget } from '../components/TodayActionWidget';
 import { GanttView } from '../components/GanttView';
+import { FilterBar } from '../components/FilterBar';
 import { ListTodo, CheckCircle, Plus, Grid, LogOut } from 'lucide-react';
-import type { Task, Project } from '../types';
+import type { Task, Project, Milestone } from '../types';
+import { filterTasks, type DueDateFilter, type PriorityFilter, type StatusFilter } from '../lib/filterUtils';
 
 interface DashboardProps {
     tasks: Task[];
     projects: Project[];
+    milestones: Milestone[];
     completedCount: number;
     view: 'board' | 'gantt';
     setView: (view: 'board' | 'gantt') => void;
-    chartData: any[];
     handleDragEnd: any;
     handleTaskClick: any;
     handleDeleteTask: any;
     handleSaveTask: any;
     handleSaveProject: any;
-    handleProjectClick: any;
     handleEditProject: any;
     handleDeleteProject: any;
     handleSignOut: any;
@@ -46,16 +47,15 @@ interface DashboardProps {
 export const Dashboard: React.FC<DashboardProps> = ({
     tasks,
     projects,
+    milestones,
     completedCount,
     view,
     setView,
-    chartData,
     handleDragEnd,
     handleTaskClick,
     handleDeleteTask,
     handleSaveTask,
     handleSaveProject,
-    handleProjectClick,
     handleEditProject,
     handleDeleteProject,
     handleSignOut,
@@ -73,6 +73,89 @@ export const Dashboard: React.FC<DashboardProps> = ({
     setEditingProject,
     selectedProject,
 }) => {
+    // Filter state
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filterProject, setFilterProject] = useState('all');
+    const [selectedDueDate, setSelectedDueDate] = useState<DueDateFilter>('all');
+    const [selectedPriority, setSelectedPriority] = useState<PriorityFilter>('all');
+    const [selectedStatus, setSelectedStatus] = useState<StatusFilter>('all');
+
+    // Filtered tasks
+    const filteredTasks = useMemo(() => {
+        return filterTasks(tasks, {
+            searchQuery,
+            project: filterProject,
+            dueDate: selectedDueDate,
+            priority: selectedPriority,
+            status: selectedStatus,
+        });
+    }, [tasks, searchQuery, filterProject, selectedDueDate, selectedPriority, selectedStatus]);
+
+    const handleClearFilters = () => {
+        setSearchQuery('');
+        setFilterProject('all');
+        setSelectedDueDate('all');
+        setSelectedPriority('all');
+        setSelectedStatus('all');
+    };
+    const burnDownData = React.useMemo(() => {
+        if (tasks.length === 0) return [];
+
+        const sortedTasks = [...tasks].sort((a, b) => new Date(a.created_at || '').getTime() - new Date(b.created_at || '').getTime());
+        if (sortedTasks.length === 0) return [];
+
+        const startDate = new Date(sortedTasks[0].created_at || new Date());
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+
+        const dates = [];
+        let currentDate = new Date(startDate);
+        currentDate.setHours(0, 0, 0, 0);
+
+        while (currentDate <= today) {
+            dates.push(new Date(currentDate));
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        const latestDueDate = tasks.reduce((latest, t) => {
+            if (!t.due_date) return latest;
+            const d = new Date(t.due_date);
+            return d > latest ? d : latest;
+        }, new Date(startDate));
+
+        const finalDeadline = latestDueDate > today ? latestDueDate : today;
+        const totalDuration = finalDeadline.getTime() - startDate.getTime();
+        const totalTasks = tasks.length;
+
+        return dates.map(date => {
+            const dateStr = `${date.getMonth() + 1}/${date.getDate()}`;
+            const time = date.getTime();
+
+            const actual = tasks.filter(t => {
+                const created = new Date(t.created_at || '').getTime();
+                if (created > time + 86400000) return false;
+
+                if (t.status === 'done') {
+                    const completed = new Date(t.updated_at || '').getTime();
+                    return completed > time + 86400000;
+                }
+                return true;
+            }).length;
+
+            const elapsed = time - startDate.getTime();
+            let ideal = totalTasks;
+            if (totalDuration > 0) {
+                ideal = Math.max(0, totalTasks - (totalTasks * (elapsed / totalDuration)));
+            }
+
+            return {
+                date: dateStr,
+                ideal: Math.round(ideal),
+                actual: actual
+            };
+        });
+    }, [tasks]);
+
     return (
         <div className="h-full overflow-y-auto px-4 md:px-6 py-6 max-w-7xl mx-auto w-full max-w-full overflow-x-hidden">
             {/* Header with New Project Button and Sign Out */}
@@ -170,11 +253,40 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             </div>
                         </div>
 
+                        {/* Filter Bar */}
+                        <FilterBar
+                            searchQuery={searchQuery}
+                            onSearchChange={setSearchQuery}
+                            selectedProject={filterProject}
+                            onProjectChange={setFilterProject}
+                            selectedDueDate={selectedDueDate}
+                            onDueDateChange={setSelectedDueDate}
+                            selectedPriority={selectedPriority}
+                            onPriorityChange={setSelectedPriority}
+                            selectedStatus={selectedStatus}
+                            onStatusChange={setSelectedStatus}
+                            onClearFilters={handleClearFilters}
+                            projects={projects}
+                        />
+
                         {/* Workspace Content with horizontal scroll for Gantt */}
                         <div className="w-full min-h-[500px]">
-                            {view === 'board' ? (
+                            {filteredTasks.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-12">
+                                    <p className="text-gray-500 dark:text-gray-400 text-lg">
+                                        条件に一致するタスクはありません
+                                    </p>
+                                    <button
+                                        onClick={handleClearFilters}
+                                        className="mt-4 text-cyan-500 hover:text-cyan-600 dark:text-cyan-400 dark:hover:text-cyan-300 underline"
+                                    >
+                                        フィルターをクリア
+                                    </button>
+                                </div>
+                            ) : view === 'board' ? (
                                 <KanbanBoard
-                                    tasks={tasks}
+                                    tasks={filteredTasks}
+                                    milestones={milestones}
                                     onDragEnd={handleDragEnd}
                                     onAddClick={() => setIsModalOpen(true)}
                                     onTaskClick={handleTaskClick}
@@ -182,7 +294,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 />
                             ) : (
                                 <div className="overflow-x-auto max-w-full">
-                                    <GanttView tasks={tasks} onTaskClick={handleTaskClick} />
+                                    <GanttView tasks={filteredTasks} onTaskClick={handleTaskClick} onTaskUpdate={fetchTasks} />
                                 </div>
                             )}
                         </div>
@@ -192,7 +304,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 {/* Tier 4: Analytics (Analysis) - Full Width */}
                 <div className="col-span-12 w-full min-w-0">
                     <div className="h-[300px] w-full overflow-hidden">
-                        <ProjectChart data={chartData} onBarClick={handleProjectClick} />
+                        <ProjectChart data={burnDownData} />
                     </div>
                 </div>
             </div>
@@ -207,6 +319,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 onSave={handleSaveTask}
                 initialTask={editingTask}
                 projects={projects}
+                milestones={milestones}
+                tasks={tasks}
                 onRefresh={fetchTasks}
             />
 
