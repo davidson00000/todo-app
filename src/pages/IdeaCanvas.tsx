@@ -17,6 +17,8 @@ import {
 import '@xyflow/react/dist/style.css';
 import { Sun, Moon, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { toPng } from 'html-to-image';
+import jsPDF from 'jspdf';
 import StickyNode from '../components/canvas/StickyNode';
 import ImageNode from '../components/canvas/ImageNode';
 import CanvasSidebar from '../components/canvas/CanvasSidebar';
@@ -391,6 +393,84 @@ export const IdeaCanvas: React.FC = () => {
         setNodeId(0);
     };
 
+    const handleDeleteCanvas = async (canvasId: string) => {
+        if (!window.confirm('Are you sure you want to delete this canvas? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            const { error } = await supabase
+                .from('canvases')
+                .delete()
+                .eq('id', canvasId);
+
+            if (error) throw error;
+
+            // If the deleted canvas is the current one, clear the canvas
+            if (currentCanvas?.id === canvasId) {
+                setNodes([]);
+                setEdges([]);
+                setNodeId(0);
+                setCurrentCanvas(null);
+                setBgVariant(BackgroundVariant.Dots);
+                setBgColor('#f9fafb');
+                localStorage.removeItem(STORAGE_KEY);
+            }
+
+            alert('Canvas deleted successfully!');
+        } catch (error) {
+            console.error('Error deleting canvas:', error);
+            alert('Failed to delete canvas');
+        }
+    };
+
+    const handleDownloadPDF = async () => {
+        if (!reactFlowWrapper.current) return;
+
+        try {
+            const viewport = reactFlowWrapper.current.querySelector('.react-flow__viewport') as HTMLElement;
+            if (!viewport) {
+                alert('Canvas viewport not found');
+                return;
+            }
+
+            // Generate image from the viewport
+            const dataUrl = await toPng(viewport, {
+                backgroundColor: bgColor,
+                quality: 1,
+                pixelRatio: 2, // Higher resolution
+            });
+
+            // Create PDF
+            const pdf = new jsPDF({
+                orientation: 'landscape',
+                unit: 'px',
+                format: [viewport.offsetWidth, viewport.offsetHeight],
+            });
+
+            const img = new Image();
+            img.src = dataUrl;
+            img.onload = () => {
+                pdf.addImage(
+                    dataUrl,
+                    'PNG',
+                    0,
+                    0,
+                    viewport.offsetWidth,
+                    viewport.offsetHeight
+                );
+
+                const fileName = currentCanvas?.name
+                    ? `${currentCanvas.name}.pdf`
+                    : 'canvas.pdf';
+                pdf.save(fileName);
+            };
+        } catch (error) {
+            console.error('Error generating PDF:', error);
+            alert('Failed to generate PDF');
+        }
+    };
+
     return (
         <div className="w-full h-full flex overflow-hidden" style={{ backgroundColor: bgColor }}>
             <CanvasSidebar
@@ -400,6 +480,8 @@ export const IdeaCanvas: React.FC = () => {
                 onNew={handleNewCanvas}
                 onSave={handleSaveCanvas}
                 onLoad={handleLoadCanvas}
+                onDelete={handleDeleteCanvas}
+                onDownloadPDF={handleDownloadPDF}
                 bgVariant={bgVariant}
                 bgColor={bgColor}
                 onVariantChange={setBgVariant}

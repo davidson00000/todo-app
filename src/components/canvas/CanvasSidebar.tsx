@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Save, FolderOpen, File, Loader2, Trash2, ChevronLeft } from 'lucide-react';
+import { Plus, Save, FolderOpen, File, Loader2, Trash2, ChevronLeft, Download } from 'lucide-react';
 import { BackgroundVariant } from '@xyflow/react';
 import { supabase } from '../../lib/supabase';
 import type { Canvas } from '../../types';
@@ -9,6 +9,8 @@ interface CanvasSidebarProps {
     onNew: () => void;
     onSave: (name: string) => Promise<void>;
     onLoad: (canvas: Canvas) => void;
+    onDelete: (canvasId: string) => Promise<void>;
+    onDownloadPDF: () => Promise<void>;
     isOpen: boolean;
     onClose: () => void;
     bgVariant: BackgroundVariant;
@@ -23,6 +25,8 @@ const CanvasSidebar: React.FC<CanvasSidebarProps> = ({
     onNew,
     onSave,
     onLoad,
+    onDelete,
+    onDownloadPDF,
     isOpen,
     onClose,
     bgVariant,
@@ -84,6 +88,15 @@ const CanvasSidebar: React.FC<CanvasSidebarProps> = ({
         // Don't auto-close on load to keep workflow smooth
     };
 
+    const handleDelete = async (canvasId: string, canvasName: string) => {
+        // Stop propagation to prevent loading the canvas
+        if (!window.confirm(`Delete "${canvasName}"? This action cannot be undone.`)) {
+            return;
+        }
+        await onDelete(canvasId);
+        fetchCanvases(); // Refresh list after deletion
+    };
+
     return (
         <div
             className={`bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 flex flex-col transition-all duration-300 overflow-hidden ${isOpen ? 'w-64' : 'w-0'}`}
@@ -113,16 +126,26 @@ const CanvasSidebar: React.FC<CanvasSidebarProps> = ({
                     <div className="border-t border-gray-200 dark:border-slate-800 pt-4">
                         <div className="flex items-center justify-between mb-2">
                             <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Current: {currentCanvasName || 'Unsaved'}</h3>
-                            <button
-                                onClick={() => {
-                                    setSaveName(currentCanvasName || '');
-                                    setShowSaveInput(true);
-                                }}
-                                className="text-cyan-500 dark:text-blue-400 hover:underline text-sm flex items-center gap-1"
-                            >
-                                <Save size={14} />
-                                Save
-                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => {
+                                        setSaveName(currentCanvasName || '');
+                                        setShowSaveInput(true);
+                                    }}
+                                    className="text-cyan-500 dark:text-blue-400 hover:underline text-sm flex items-center gap-1"
+                                >
+                                    <Save size={14} />
+                                    Save
+                                </button>
+                                <button
+                                    onClick={onDownloadPDF}
+                                    className="text-green-500 dark:text-green-400 hover:underline text-sm flex items-center gap-1"
+                                    title="Download as PDF"
+                                >
+                                    <Download size={14} />
+                                    PDF
+                                </button>
+                            </div>
                         </div>
 
                         {showSaveInput && (
@@ -159,17 +182,31 @@ const CanvasSidebar: React.FC<CanvasSidebarProps> = ({
                         ) : (
                             <div className="space-y-1 max-h-[200px] overflow-y-auto">
                                 {canvases.map((canvas) => (
-                                    <button
+                                    <div
                                         key={canvas.id}
-                                        onClick={() => handleLoad(canvas)}
-                                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left group"
+                                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors group"
                                     >
-                                        <File size={16} className="text-gray-400 group-hover:text-cyan-400" />
-                                        <span className="flex-1 truncate">{canvas.name}</span>
-                                        <span className="text-xs text-gray-400">
+                                        <File size={16} className="text-gray-400 group-hover:text-cyan-400 flex-shrink-0" />
+                                        <button
+                                            onClick={() => handleLoad(canvas)}
+                                            className="flex-1 text-left truncate"
+                                        >
+                                            {canvas.name}
+                                        </button>
+                                        <span className="text-xs text-gray-400 flex-shrink-0">
                                             {new Date(canvas.updated_at).toLocaleDateString()}
                                         </span>
-                                    </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDelete(canvas.id, canvas.name);
+                                            }}
+                                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 transition-all flex-shrink-0"
+                                            title="Delete canvas"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
                                 ))}
                                 {canvases.length === 0 && (
                                     <p className="text-sm text-gray-400 text-center py-4">No saved canvases</p>
