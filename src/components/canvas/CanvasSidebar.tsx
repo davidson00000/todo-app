@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Save, FolderOpen, File, Loader2, Trash2, ChevronLeft, Download } from 'lucide-react';
+import { Plus, Save, Trash2, Download, X, ChevronLeft, Loader2 } from 'lucide-react';
 import { BackgroundVariant } from '@xyflow/react';
 import { supabase } from '../../lib/supabase';
 import type { Canvas } from '../../types';
@@ -18,6 +18,7 @@ interface CanvasSidebarProps {
     onVariantChange: (variant: BackgroundVariant) => void;
     onColorChange: (color: string) => void;
     onClear: () => void;
+    canvasType?: 'canvas' | 'mindmap'; // Filter by canvas type
 }
 
 const CanvasSidebar: React.FC<CanvasSidebarProps> = ({
@@ -34,12 +35,15 @@ const CanvasSidebar: React.FC<CanvasSidebarProps> = ({
     onVariantChange,
     onColorChange,
     onClear,
+    canvasType = 'canvas', // Default to 'canvas' type
 }) => {
     const [canvases, setCanvases] = useState<Canvas[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [saveName, setSaveName] = useState('');
     const [showSaveInput, setShowSaveInput] = useState(false);
+
+    const label = canvasType === 'mindmap' ? 'Map' : 'Canvas';
 
     useEffect(() => {
         if (isOpen) {
@@ -53,11 +57,17 @@ const CanvasSidebar: React.FC<CanvasSidebarProps> = ({
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            const { data, error } = await supabase
+            let query = supabase
                 .from('canvases')
                 .select('*')
-                .eq('user_id', user.id)
-                .order('updated_at', { ascending: false });
+                .eq('user_id', user.id);
+
+            // Filter by canvas type
+            if (canvasType) {
+                query = query.eq('type', canvasType);
+            }
+
+            const { data, error } = await query.order('updated_at', { ascending: false });
 
             if (error) throw error;
             setCanvases(data || []);
@@ -99,190 +109,186 @@ const CanvasSidebar: React.FC<CanvasSidebarProps> = ({
 
     return (
         <div
-            className={`bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 flex flex-col transition-all duration-300 overflow-hidden ${isOpen ? 'w-64' : 'w-0'}`}
+            className={`
+                fixed top-0 left-0 h-full bg-white dark:bg-slate-900 shadow-xl z-40 transition-all duration-300 ease-in-out flex flex-col border-r border-gray-200 dark:border-slate-800
+                ${isOpen ? 'w-64' : 'w-0'}
+            `}
         >
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-800 min-w-64">
-                <p className="text-xs text-gray-500 dark:text-slate-500">Canvas Menu</p>
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-800">
+                <p className="text-xs text-gray-500 dark:text-slate-500">{label} Menu</p>
                 <button
                     onClick={onClose}
-                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg text-gray-600 dark:text-slate-400 hover:text-cyan-400 transition-colors"
-                    title="Hide sidebar"
+                    className="p-1 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-md text-gray-500 dark:text-gray-400 transition-colors"
                 >
-                    <ChevronLeft size={18} />
+                    <ChevronLeft size={16} />
                 </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-6 min-w-64">
-                {/* File Management Section */}
-                <div className="space-y-4">
-                    <button
-                        onClick={onNew}
-                        className="w-full flex items-center gap-2 px-4 py-2 bg-cyan-500 text-white rounded-full hover:bg-cyan-600 transition-colors text-sm font-medium shadow-sm"
-                    >
-                        <Plus size={16} />
-                        New Canvas
-                    </button>
+            <div className="flex-1 overflow-y-auto p-4">
+                {/* Menu Section */}
+                <div className="mb-8">
+                    <div className="mt-2 space-y-2">
+                        <button
+                            onClick={onNew}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-md transition-colors"
+                        >
+                            <Plus size={16} />
+                            New {label}
+                        </button>
 
-                    <div className="border-t border-gray-200 dark:border-slate-800 pt-4">
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="pt-2 pb-2">
                             <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Current: {currentCanvasName || 'Unsaved'}</h3>
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => {
-                                        setSaveName(currentCanvasName || '');
-                                        setShowSaveInput(true);
-                                    }}
-                                    className="text-cyan-500 dark:text-blue-400 hover:underline text-sm flex items-center gap-1"
-                                >
-                                    <Save size={14} />
-                                    Save
-                                </button>
-                                <button
-                                    onClick={onDownloadPDF}
-                                    className="text-green-500 dark:text-green-400 hover:underline text-sm flex items-center gap-1"
-                                    title="Download as PDF"
-                                >
-                                    <Download size={14} />
-                                    PDF
-                                </button>
-                            </div>
-                        </div>
-
-                        {showSaveInput && (
-                            <div className="flex gap-2 mb-4">
-                                <input
-                                    type="text"
-                                    value={saveName}
-                                    onChange={(e) => setSaveName(e.target.value)}
-                                    placeholder="Canvas Name"
-                                    className="flex-1 px-2 py-1 text-sm border rounded dark:bg-slate-800 dark:border-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                    autoFocus
-                                />
-                                <button
-                                    onClick={handleSave}
-                                    disabled={isSaving}
-                                    className="px-2 py-1 bg-cyan-500 text-white rounded text-sm hover:bg-cyan-600 disabled:opacity-50"
-                                >
-                                    {isSaving ? <Loader2 size={14} className="animate-spin" /> : 'OK'}
-                                </button>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="space-y-2">
-                        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                            <FolderOpen size={16} />
-                            Saved Canvases
-                        </h3>
-
-                        {isLoading ? (
-                            <div className="flex justify-center py-4">
-                                <Loader2 size={24} className="animate-spin text-gray-400" />
-                            </div>
-                        ) : (
-                            <div className="space-y-1 max-h-[200px] overflow-y-auto">
-                                {canvases.map((canvas) => (
-                                    <div
-                                        key={canvas.id}
-                                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors group"
-                                    >
-                                        <File size={16} className="text-gray-400 group-hover:text-cyan-400 flex-shrink-0" />
-                                        <button
-                                            onClick={() => handleLoad(canvas)}
-                                            className="flex-1 text-left truncate"
-                                        >
-                                            {canvas.name}
-                                        </button>
-                                        <span className="text-xs text-gray-400 flex-shrink-0">
-                                            {new Date(canvas.updated_at).toLocaleDateString()}
-                                        </span>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDelete(canvas.id, canvas.name);
+                            <div className="flex gap-2 mt-2">
+                                {showSaveInput ? (
+                                    <div className="flex gap-2 w-full">
+                                        <input
+                                            type="text"
+                                            value={saveName}
+                                            onChange={(e) => setSaveName(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') handleSave();
+                                                if (e.key === 'Escape') setShowSaveInput(false);
                                             }}
-                                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 transition-all flex-shrink-0"
-                                            title="Delete canvas"
-                                        >
-                                            <Trash2 size={14} />
+                                            className="flex-1 px-2 py-1 text-sm border rounded dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                                            placeholder={`${label} Name`}
+                                            autoFocus
+                                        />
+                                        <button onClick={handleSave} disabled={isSaving} className="p-1 text-green-600 hover:bg-green-50 rounded">
+                                            {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                                        </button>
+                                        <button onClick={() => setShowSaveInput(false)} className="p-1 text-red-600 hover:bg-red-50 rounded">
+                                            <X size={16} />
                                         </button>
                                     </div>
-                                ))}
-                                {canvases.length === 0 && (
-                                    <p className="text-sm text-gray-400 text-center py-4">No saved canvases</p>
+                                ) : (
+                                    <>
+                                        <button
+                                            onClick={() => {
+                                                setSaveName(currentCanvasName || '');
+                                                setShowSaveInput(true);
+                                            }}
+                                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-cyan-500 hover:bg-cyan-600 text-white text-sm rounded-md transition-colors"
+                                        >
+                                            <Save size={16} />
+                                            Save
+                                        </button>
+                                        <button
+                                            onClick={onDownloadPDF}
+                                            className="flex items-center justify-center px-3 py-2 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 text-sm rounded-md transition-colors"
+                                            title="Download PDF"
+                                        >
+                                            <Download size={16} />
+                                        </button>
+                                    </>
                                 )}
                             </div>
-                        )}
+                        </div>
                     </div>
+                </div>
+
+                {/* Saved Canvases List */}
+                <div className="mb-8">
+                    <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-xs font-semibold text-gray-500 dark:text-slate-500 uppercase tracking-wider">
+                            Saved {label}s
+                        </h3>
+                    </div>
+
+                    {isLoading ? (
+                        <div className="flex justify-center py-4">
+                            <Loader2 size={24} className="animate-spin text-gray-400" />
+                        </div>
+                    ) : (
+                        <div className="space-y-1 max-h-60 overflow-y-auto">
+                            {canvases.map((canvas) => (
+                                <div
+                                    key={canvas.id}
+                                    className="group flex items-center justify-between px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-md cursor-pointer transition-colors"
+                                    onClick={() => handleLoad(canvas)}
+                                >
+                                    <div className="flex flex-col overflow-hidden">
+                                        <span className="font-medium truncate">{canvas.name}</span>
+                                        <span className="text-xs text-gray-400">
+                                            {new Date(canvas.updated_at).toLocaleDateString()}
+                                        </span>
+                                    </div>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDelete(canvas.id, canvas.name);
+                                        }}
+                                        className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-all"
+                                        title={`Delete ${label.toLowerCase()}`}
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
+                            ))}
+                            {canvases.length === 0 && (
+                                <p className="text-sm text-gray-400 text-center py-4">No saved {label.toLowerCase()}s</p>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Settings Section */}
                 <div className="border-t border-gray-200 dark:border-slate-800 pt-6">
-                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Canvas Settings</h3>
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">{label} Settings</h3>
 
-                    {/* Background Pattern */}
-                    <div className="mb-4">
-                        <label className="text-xs text-gray-500 dark:text-gray-400 block mb-2">Background Pattern</label>
-                        <div className="grid grid-cols-3 gap-2">
-                            <button
-                                onClick={() => onVariantChange(BackgroundVariant.Dots)}
-                                className={`px-2 py-1.5 text-xs border rounded-md transition-colors ${bgVariant === BackgroundVariant.Dots
-                                    ? 'bg-cyan-50 border-cyan-400 text-cyan-700 dark:bg-blue-900/30 dark:text-blue-300'
-                                    : 'border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800'
-                                    }`}
-                            >
-                                Dots
-                            </button>
-                            <button
-                                onClick={() => onVariantChange(BackgroundVariant.Lines)}
-                                className={`px-2 py-1.5 text-xs border rounded-md transition-colors ${bgVariant === BackgroundVariant.Lines
-                                    ? 'bg-cyan-50 border-cyan-400 text-cyan-700 dark:bg-blue-900/30 dark:text-blue-300'
-                                    : 'border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800'
-                                    }`}
-                            >
-                                Lines
-                            </button>
-                            <button
-                                onClick={() => onVariantChange(BackgroundVariant.Cross)}
-                                className={`px-2 py-1.5 text-xs border rounded-md transition-colors ${bgVariant === BackgroundVariant.Cross
-                                    ? 'bg-cyan-50 border-cyan-400 text-cyan-700 dark:bg-blue-900/30 dark:text-blue-300'
-                                    : 'border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800'
-                                    }`}
-                            >
-                                Cross
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Background Color */}
-                    <div className="mb-6">
-                        <label className="text-xs text-gray-500 dark:text-gray-400 block mb-2">Background Color</label>
-                        <div className="flex items-center gap-3">
-                            <div className="relative w-8 h-8 rounded-full overflow-hidden border border-gray-200 dark:border-slate-700 shadow-sm">
-                                <input
-                                    type="color"
-                                    value={bgColor}
-                                    onChange={(e) => onColorChange(e.target.value)}
-                                    className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] p-0 border-0 cursor-pointer"
-                                />
+                    <div className="space-y-4">
+                        <div>
+                            <label className="text-xs text-gray-500 dark:text-gray-400 block mb-2">Background Style</label>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    onClick={() => onVariantChange(BackgroundVariant.Dots)}
+                                    className={`px-3 py-2 text-xs rounded border ${bgVariant === BackgroundVariant.Dots
+                                            ? 'bg-cyan-50 border-cyan-200 text-cyan-700 dark:bg-cyan-900/20 dark:border-cyan-800 dark:text-cyan-400'
+                                            : 'border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400'
+                                        }`}
+                                >
+                                    Dots
+                                </button>
+                                <button
+                                    onClick={() => onVariantChange(BackgroundVariant.Lines)}
+                                    className={`px-3 py-2 text-xs rounded border ${bgVariant === BackgroundVariant.Lines
+                                            ? 'bg-cyan-50 border-cyan-200 text-cyan-700 dark:bg-cyan-900/20 dark:border-cyan-800 dark:text-cyan-400'
+                                            : 'border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400'
+                                        }`}
+                                >
+                                    Lines
+                                </button>
                             </div>
-                            <span className="text-xs font-mono text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded">
-                                {bgColor}
-                            </span>
+                        </div>
+
+                        <div>
+                            <label className="text-xs text-gray-500 dark:text-gray-400 block mb-2">Background Color</label>
+                            <div className="flex gap-2">
+                                {['#ffffff', '#f8fafc', '#f0f9ff', '#f0fdf4', '#fff1f2'].map((color) => (
+                                    <button
+                                        key={color}
+                                        onClick={() => onColorChange(color)}
+                                        className={`w-6 h-6 rounded-full border ${bgColor === color ? 'ring-2 ring-cyan-500 ring-offset-2' : 'border-gray-200'
+                                            }`}
+                                        style={{ backgroundColor: color }}
+                                    />
+                                ))}
+                            </div>
                         </div>
                     </div>
+                </div>
 
+                <div className="mt-auto pt-6 border-t border-gray-200 dark:border-slate-800">
                     {/* Clear Canvas */}
                     <button
                         onClick={() => {
-                            if (window.confirm('Are you sure you want to clear the entire canvas? This cannot be undone.')) {
+                            if (window.confirm(`Are you sure you want to clear the entire ${label.toLowerCase()}? This cannot be undone.`)) {
                                 onClear();
                             }
                         }}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors text-sm border border-red-200 dark:border-red-800"
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
                     >
                         <Trash2 size={16} />
-                        Clear All
+                        Clear {label}
                     </button>
                 </div>
             </div>

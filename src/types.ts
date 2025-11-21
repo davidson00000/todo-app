@@ -77,6 +77,7 @@ export interface Canvas {
     id: string;
     user_id: string;
     name: string;
+    type?: 'canvas' | 'mindmap'; // Type of canvas
     data?: any; // Legacy
     nodes?: any;
     edges?: any;

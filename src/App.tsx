@@ -9,6 +9,7 @@ import { Login } from './components/Login';
 import { ThemeProvider } from './components/ThemeProvider';
 import { Dashboard } from './pages/Dashboard';
 import { IdeaCanvas } from './pages/IdeaCanvas';
+import { IdeaMap } from './pages/IdeaMap';
 import { Menu } from 'lucide-react';
 import { Roadmap } from './pages/Roadmap';
 import { cn } from './lib/utils';
@@ -414,6 +415,7 @@ function App() {
                   }
                 />
                 <Route path="/canvas" element={<IdeaCanvas />} />
+                <Route path="/map" element={<IdeaMap />} />
               </Routes>
             </Layout>
 

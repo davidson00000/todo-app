@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FolderKanban, Lightbulb, Settings, ChevronLeft, ChevronRight, Map } from 'lucide-react';
+import { FolderKanban, Lightbulb, Settings, ChevronLeft, ChevronRight, Map, Brain } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface SideNavProps {
@@ -13,6 +13,7 @@ export const SideNav: React.FC<SideNavProps> = ({ onOpenSettings }) => {
 
     const navItems = [
         { icon: Lightbulb, label: 'Idea Canvas', path: '/canvas' },
+        { icon: Brain, label: 'Idea Map', path: '/map' },
         { icon: Map, label: 'Roadmap', path: '/roadmap' },
         { icon: FolderKanban, label: 'Projects', path: '/' },
     ];

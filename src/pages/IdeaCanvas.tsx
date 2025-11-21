@@ -487,6 +487,7 @@ export const IdeaCanvas: React.FC = () => {
                 onVariantChange={setBgVariant}
                 onColorChange={setBgColor}
                 onClear={handleClearAll}
+                canvasType="canvas"
             />
 
             <div className="flex-1 h-full relative overflow-hidden">
