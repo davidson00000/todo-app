@@ -62,9 +62,10 @@ export const IdeaCanvas: React.FC = () => {
     // Helper to restore callbacks
     const restoreNodeCallbacks = useCallback((nodesToRestore: Node[]) => {
         return nodesToRestore.map((node) => {
-            if (node.type === 'sticky') {
+            const safeNode = { ...node, position: node.position || { x: 0, y: 0 } };
+            if (safeNode.type === 'sticky') {
                 return {
-                    ...node,
+                    ...safeNode,
                     data: {
                         ...node.data,
                         onChange: (newText: string) => {
@@ -87,9 +88,9 @@ export const IdeaCanvas: React.FC = () => {
                         },
                     },
                 };
-            } else if (node.type === 'image') {
+            } else if (safeNode.type === 'image') {
                 return {
-                    ...node,
+                    ...safeNode,
                     data: {
                         ...node.data,
                         onImageChange: (newUrl: string) => {
@@ -104,7 +105,7 @@ export const IdeaCanvas: React.FC = () => {
                     },
                 };
             }
-            return node;
+            return safeNode;
         });
     }, [setNodes]);
 

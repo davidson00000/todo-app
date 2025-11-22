@@ -413,6 +413,7 @@ export const IdeaMap: React.FC = () => {
                 // Restore callbacks and apply layout
                 const nodesWithCallbacks = loadedNodes.map((node: any) => ({
                     ...node,
+                    position: node.position || { x: 0, y: 0 },
                     data: {
                         ...node.data,
                         onChange: (newText: string) => {
@@ -575,6 +576,7 @@ export const IdeaMap: React.FC = () => {
                         // Restore callbacks
                         const nodesWithCallbacks = savedNodes.map((node: any) => ({
                             ...node,
+                            position: node.position || { x: 0, y: 0 },
                             data: {
                                 ...node.data,
                                 onChange: (newText: string) => {
