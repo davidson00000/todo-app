@@ -229,12 +229,20 @@ export const IdeaMap: React.FC = () => {
     const addChildNode = useCallback((parentId: string) => {
         const currentNodes = nodesRef.current;
         const currentEdges = edgesRef.current;
-        const currentNodeId = nodeIdRef.current;
 
         console.log('[addChildNode] Called with parentId:', parentId, 'nodes:', currentNodes.length, 'edges:', currentEdges.length);
         takeSnapshot({ nodes: currentNodes, edges: currentEdges }); // Snapshot before change
 
-        const newNodeId = `node-${currentNodeId}`;
+        let currentNodeId = nodeIdRef.current;
+        // Safety check: Ensure we don't generate an ID that already exists
+        // This prevents the "Encountered two children with the same key" error
+        let newNodeId = `node-${currentNodeId}`;
+        while (nodesRef.current.some(n => n.id === newNodeId)) {
+            console.warn(`[addChildNode] ID collision detected for ${newNodeId}, incrementing...`);
+            currentNodeId++;
+            newNodeId = `node-${currentNodeId}`;
+        }
+
         const parentNode = currentNodes.find((n) => n.id === parentId);
         if (!parentNode) {
             console.log('[addChildNode] Parent node not found:', parentId);
@@ -243,34 +251,46 @@ export const IdeaMap: React.FC = () => {
 
         const parentLevel = (parentNode.data as MindMapNodeData).level || 0;
 
+        console.log(`[addChildNode] Creating node: ${newNodeId} updatedNodes: ${nodesRef.current.length + 1} updatedEdges: ${edgesRef.current.length + 1}`);
+
         const newNode: Node = {
             id: newNodeId,
             type: 'mindmap',
-            position: { x: 0, y: 0 },
-            sourcePosition: Position.Right,
-            targetPosition: Position.Left,
-            draggable: false,
-            connectable: false,
             data: {
                 label: '', // Start empty for autoFocus
                 level: parentLevel + 1,
                 parentId: parentId,
+                // Style properties - inherit from parent or default
+                color: parentNode.data.color,
+                textColor: parentNode.data.textColor,
+                fontSize: 14,
+                fontFamily: parentNode.data.fontFamily,
+                shape: parentNode.data.shape,
+                // Callbacks
                 onChange: (newText: string) => {
                     setNodes((nds) =>
-                        nds.map((node) =>
-                            node.id === newNodeId
-                                ? { ...node, data: { ...node.data, label: newText } }
-                                : node
-                        )
+                        nds.map((node) => {
+                            if (node.id === newNodeId) {
+                                return {
+                                    ...node,
+                                    data: { ...node.data, label: newText },
+                                };
+                            }
+                            return node;
+                        })
                     );
                 },
                 onStyleChange: (style: Partial<MindMapNodeData>) => {
                     setNodes((nds) =>
-                        nds.map((node) =>
-                            node.id === newNodeId
-                                ? { ...node, data: { ...node.data, ...style } }
-                                : node
-                        )
+                        nds.map((node) => {
+                            if (node.id === newNodeId) {
+                                return {
+                                    ...node,
+                                    data: { ...node.data, ...style },
+                                };
+                            }
+                            return node;
+                        })
                     );
                 },
                 onAddChild: () => {
@@ -284,69 +304,59 @@ export const IdeaMap: React.FC = () => {
                     }
                 },
             },
+            position: { x: 0, y: 0 }, // Initial position, will be fixed by dagre
+            draggable: false, // Disable dragging for auto-layout
+            connectable: false,
         };
 
         const newEdge: Edge = {
-            id: `edge-${parentId}-${newNodeId}`,
+            id: `e${parentId}-${newNodeId}`,
             source: parentId,
             target: newNodeId,
-            type: 'smoothstep',
-            markerEnd: {
-                type: MarkerType.ArrowClosed,
-            },
+            type: 'smoothstep', // Better for mind maps
+            animated: true,
+            style: { stroke: '#94a3b8', strokeWidth: 2 },
         };
 
-        // IMPORTANT: Create new arrays for layout calculation
-        const updatedNodes = [...currentNodes, newNode];
-        const updatedEdges = [...currentEdges, newEdge];
+        const updatedNodes = [...nodesRef.current, newNode];
+        const updatedEdges = [...edgesRef.current, newEdge];
 
-        console.log('[addChildNode] Creating node:', newNodeId, 'updatedNodes:', updatedNodes.length, 'updatedEdges:', updatedEdges.length);
-
-        // Apply layout immediately with the NEW nodes and edges
-        const { nodes: layoutedNodes } = getLayoutedElements(updatedNodes, updatedEdges);
-
-        // Force non-draggable/connectable
-        const finalNodes = layoutedNodes.map(node => ({
-            ...node,
-            draggable: false,
-            connectable: false
-        }));
+        // Apply layout immediately
+        const { nodes: finalNodes } = getLayoutedElements(updatedNodes, updatedEdges);
 
         // CRITICAL: Update refs BEFORE setNodes/setEdges so they're available immediately
         nodesRef.current = finalNodes;
         edgesRef.current = updatedEdges;
-        nodeIdRef.current = currentNodeId + 1;
+        nodeIdRef.current = currentNodeId + 1; // Update to next available ID
 
         // Update state with layouted nodes and new edges
         setNodes(finalNodes);
         setEdges(updatedEdges);
-        setNodeId((id) => id + 1);
+        setNodeId(currentNodeId + 1); // Sync state
 
-        console.log('[addChildNode] Node added successfully, refs updated. New state:', finalNodes.length, 'nodes,', updatedEdges.length, 'edges');
-
-        // Auto-select the new node (without calling setNodes again to avoid ref sync issues)
+        // Auto-select the new node for editing
         setTimeout(() => {
             setSelectedNode(newNode);
         }, 50);
-    }, [setNodes, setEdges, setNodeId, takeSnapshot]);
+
+        console.log(`[addChildNode] Node added successfully, refs updated. New state: ${finalNodes.length} nodes, ${updatedEdges.length} edges`);
+    }, [setNodes, setEdges, takeSnapshot]);
 
     const addSiblingNode = useCallback((siblingId: string) => {
         const currentEdges = edgesRef.current;
 
-        // Find incoming edge to identify parent
-        const incomingEdge = currentEdges.find(e => e.target === siblingId);
-        const parentId = incomingEdge?.source;
+        // Find parent of the sibling
+        const parentEdge = currentEdges.find(e => e.target === siblingId);
+        if (!parentEdge) {
+            console.log('[addSiblingNode] Parent edge not found for sibling:', siblingId);
+            return;
+        }
 
-        if (!parentId) {
-            // If no parent (Central Idea), behave like adding a child
-            if (addChildNodeRef.current) {
-                addChildNodeRef.current(siblingId);
-            }
-        } else {
-            // Add as sibling (child of the same parent)
-            if (addChildNodeRef.current) {
-                addChildNodeRef.current(parentId);
-            }
+        const parentId = parentEdge.source;
+
+        // Use addChildNode logic but with the parent ID
+        if (addChildNodeRef.current) {
+            addChildNodeRef.current(parentId);
         }
     }, []);
 
@@ -452,57 +462,62 @@ export const IdeaMap: React.FC = () => {
     // File Management Functions
     const handleNewCanvas = () => {
         if (window.confirm('Create new mind map? Unsaved changes will be lost.')) {
-            // Create initial root node
-            const rootNode: Node = {
-                id: 'node-0',
-                type: 'mindmap',
-                position: { x: 250, y: 250 },
-                sourcePosition: Position.Right,
-                targetPosition: Position.Left,
-                draggable: false,
-                connectable: false,
-                data: {
-                    label: 'Central Idea',
-                    level: 0,
-                    onChange: (newText: string) => {
-                        setNodes((nds) =>
-                            nds.map((node) =>
-                                node.id === 'node-0'
-                                    ? { ...node, data: { ...node.data, label: newText } }
-                                    : node
-                            )
-                        );
+            console.log('[handleNewCanvas] Creating new canvas...');
+            const initialNodes: Node[] = [
+                {
+                    id: 'node-0',
+                    type: 'mindmap',
+                    data: {
+                        label: 'Central Idea',
+                        level: 0,
+                        // Callbacks need to be added here too
+                        onChange: (newText: string) => {
+                            setNodes((nds) =>
+                                nds.map((node) =>
+                                    node.id === 'node-0'
+                                        ? { ...node, data: { ...node.data, label: newText } }
+                                        : node
+                                )
+                            );
+                        },
+                        onStyleChange: (style: Partial<MindMapNodeData>) => {
+                            setNodes((nds) =>
+                                nds.map((node) =>
+                                    node.id === 'node-0'
+                                        ? { ...node, data: { ...node.data, ...style } }
+                                        : node
+                                )
+                            );
+                        },
+                        onAddChild: () => {
+                            if (addChildNodeRef.current) {
+                                addChildNodeRef.current('node-0');
+                            }
+                        },
+                        onAddSibling: () => {
+                            if (addSiblingNodeRef.current) {
+                                addSiblingNodeRef.current('node-0');
+                            }
+                        },
                     },
-                    onStyleChange: (style: Partial<MindMapNodeData>) => {
-                        setNodes((nds) =>
-                            nds.map((node) =>
-                                node.id === 'node-0'
-                                    ? { ...node, data: { ...node.data, ...style } }
-                                    : node
-                            )
-                        );
-                    },
-                    onAddChild: () => {
-                        if (addChildNodeRef.current) {
-                            addChildNodeRef.current('node-0');
-                        }
-                    },
-                    onAddSibling: () => {
-                        if (addSiblingNodeRef.current) {
-                            addSiblingNodeRef.current('node-0');
-                        }
-                    },
+                    position: { x: 0, y: 0 },
+                    draggable: false,
+                    connectable: false,
                 },
-            };
+            ];
 
-            // Reset history with new state
-            resetHistory({
-                nodes: [rootNode],
-                edges: []
-            });
+            setNodes(initialNodes);
+            setEdges([]);
+            setNodeId(1); // Reset node ID counter
+            setCurrentCanvas(null); // Clear current canvas selection
+            resetHistory(); // Clear history
 
-            setNodeId(1);
-            setCurrentCanvas(null);
+            // Force ref update
+            nodesRef.current = initialNodes;
+            edgesRef.current = [];
+            nodeIdRef.current = 1;
+
+            console.log('[handleNewCanvas] New canvas created. nodes:', initialNodes.length);
             setBgVariant(BackgroundVariant.Lines);
             setBgColor('#ffffff');
             localStorage.removeItem(STORAGE_KEY);
