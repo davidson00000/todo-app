@@ -84,3 +84,9 @@ create policy "Users can delete their own task dependencies"
       and tasks.user_id = auth.uid()
     )
   );
+
+-- Add columns to canvases table for better structure
+alter table public.canvases add column if not exists type text default 'canvas';
+alter table public.canvases add column if not exists nodes jsonb default '[]'::jsonb;
+alter table public.canvases add column if not exists edges jsonb default '[]'::jsonb;
+alter table public.canvases add column if not exists background_config jsonb default '{"color": "#ffffff", "variant": "dots"}'::jsonb;

@@ -343,6 +343,7 @@ export const IdeaCanvas: React.FC = () => {
                     name,
                     nodes: nodesToSave,
                     edges: edges,
+                    background_config: { color: bgColor, variant: bgVariant },
                     updated_at: new Date().toISOString(),
                 })
                 .select()
@@ -365,6 +366,7 @@ export const IdeaCanvas: React.FC = () => {
             const loadedEdges = canvas.edges || canvas.data?.edges || [];
             const nextId = canvas.nextId || canvas.data?.nextId || 0;
             const settings = canvas.settings || canvas.data?.settings;
+            const backgroundConfig = (canvas as any).background_config;
 
             if (loadedNodes) {
                 setNodes(restoreNodeCallbacks(loadedNodes));
@@ -375,7 +377,10 @@ export const IdeaCanvas: React.FC = () => {
             setEdges(loadedEdges || []);
             setNodeId(nextId || 0);
 
-            if (settings) {
+            if (backgroundConfig) {
+                setBgVariant(backgroundConfig.variant || BackgroundVariant.Dots);
+                setBgColor(backgroundConfig.color || '#f9fafb');
+            } else if (settings) {
                 setBgVariant(settings.bgVariant || BackgroundVariant.Dots);
                 setBgColor(settings.bgColor || '#f9fafb');
             }

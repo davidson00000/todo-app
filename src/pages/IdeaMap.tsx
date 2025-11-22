@@ -380,7 +380,7 @@ export const IdeaMap: React.FC = () => {
                     type: 'mindmap', // Mark as mind map
                     nodes: nodesToSave,
                     edges: edges,
-                    settings: { bgVariant, bgColor },
+                    background_config: { color: bgColor, variant: bgVariant },
                     updated_at: new Date().toISOString(),
                 })
                 .select()
@@ -402,6 +402,7 @@ export const IdeaMap: React.FC = () => {
             const loadedEdges = canvas.edges || [];
             const nextId = canvas.nextId || 0;
             const settings = canvas.settings;
+            const backgroundConfig = (canvas as any).background_config;
 
             let finalNodes: Node[] = [];
 
@@ -445,7 +446,10 @@ export const IdeaMap: React.FC = () => {
 
             setNodeId(nextId || 0);
 
-            if (settings) {
+            if (backgroundConfig) {
+                setBgVariant(backgroundConfig.variant || BackgroundVariant.Lines);
+                setBgColor(backgroundConfig.color || '#ffffff');
+            } else if (settings) {
                 setBgVariant(settings.bgVariant || BackgroundVariant.Lines);
                 setBgColor(settings.bgColor || '#ffffff');
             }
