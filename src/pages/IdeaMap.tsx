@@ -120,6 +120,12 @@ export const IdeaMap: React.FC = () => {
     const selectedNodeRef = useRef(selectedNode);
     const nodesRef = useRef(nodes);
     const edgesRef = useRef(edges);
+    const nodeIdRef = useRef(nodeId);
+
+    // Refs for callback functions to prevent stale closures
+    const addChildNodeRef = useRef<((parentId: string) => void) | null>(null);
+    const addSiblingNodeRef = useRef<((siblingId: string) => void) | null>(null);
+    const deleteNodeRef = useRef<((nodeId: string) => void) | null>(null);
 
     useEffect(() => {
         selectedNodeRef.current = selectedNode;
@@ -133,30 +139,51 @@ export const IdeaMap: React.FC = () => {
         edgesRef.current = edges;
     }, [edges]);
 
+    useEffect(() => {
+        nodeIdRef.current = nodeId;
+    }, [nodeId]);
+
     // Keyboard shortcuts - stable event listener
     useEffect(() => {
+        console.log('[IdeaMap] Registering keyboard event listener');
+
         const handleKeyDown = (event: KeyboardEvent) => {
+            console.log('[IdeaMap] Key pressed:', event.key, 'Target:', (event.target as HTMLElement).tagName);
+
             // Use ref to get latest selectedNode value
             const currentSelectedNode = selectedNodeRef.current;
+            console.log('[IdeaMap] Selected node:', currentSelectedNode?.id);
 
             // ノードが選択されていない場合は何もしない
-            if (!currentSelectedNode) return;
+            if (!currentSelectedNode) {
+                console.log('[IdeaMap] No node selected, ignoring key');
+                return;
+            }
 
             const target = event.target as HTMLElement;
             const isTyping = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+            console.log('[IdeaMap] Is typing:', isTyping);
 
             // ■ Tabキー: 子ノード追加 (入力中でも有効)
             if (event.key === 'Tab') {
+                console.log('[IdeaMap] Tab key - adding child node to:', currentSelectedNode.id);
                 event.preventDefault(); // ブラウザのフォーカス移動を防止
-                addChildNode(currentSelectedNode.id);
+                // Use ref to call latest version of addChildNode
+                if (addChildNodeRef.current) {
+                    addChildNodeRef.current(currentSelectedNode.id);
+                }
                 return;
             }
 
             // ■ Enterキー: 兄弟ノード追加 (入力中は確定してから追加)
             if (event.key === 'Enter') {
                 // 日本語入力(IME)確定中は無視
-                if (event.isComposing) return;
+                if (event.isComposing) {
+                    console.log('[IdeaMap] Enter key - IME composing, ignoring');
+                    return;
+                }
 
+                console.log('[IdeaMap] Enter key - adding sibling node');
                 event.preventDefault();
 
                 // 入力中ならフォーカスを外して編集終了扱いにする
@@ -164,20 +191,27 @@ export const IdeaMap: React.FC = () => {
                     target.blur();
                 }
 
-                // 兄弟ノードを追加
-                addSiblingNode(currentSelectedNode.id);
+                // Use ref to call latest version of addSiblingNode
+                if (addSiblingNodeRef.current) {
+                    addSiblingNodeRef.current(currentSelectedNode.id);
+                }
                 return;
             }
 
             // ■ Backspace/Delete: 削除 (入力中は無効化)
             if ((event.key === 'Backspace' || event.key === 'Delete') && !isTyping) {
+                console.log('[IdeaMap] Delete key - removing node');
                 event.preventDefault();
-                deleteNode(currentSelectedNode.id);
+                // Use ref to call latest version of deleteNode
+                if (deleteNodeRef.current) {
+                    deleteNodeRef.current(currentSelectedNode.id);
+                }
                 return;
             }
 
             // ■ Escape: 選択解除
             if (event.key === 'Escape') {
+                console.log('[IdeaMap] Escape key - deselecting node');
                 setSelectedNode(null);
                 setNodes((nds) => nds.map((n) => ({ ...n, selected: false })));
                 return;
@@ -185,10 +219,14 @@ export const IdeaMap: React.FC = () => {
         };
 
         window.addEventListener('keydown', handleKeyDown, { capture: true });
-        return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
+        return () => {
+            console.log('[IdeaMap] Removing keyboard event listener');
+            window.removeEventListener('keydown', handleKeyDown, { capture: true });
+        };
     }, []); // Empty array - listener never re-registered
 
     const addChildNode = useCallback((parentId: string) => {
+        console.log('[addChildNode] Called with parentId:', parentId, 'nodes:', nodesRef.current.length, 'edges:', edgesRef.current.length);
         takeSnapshot({ nodes, edges }); // Snapshot before change
 
         const newNodeId = `node-${nodeId}`;
@@ -322,6 +360,19 @@ export const IdeaMap: React.FC = () => {
         setSelectedNode(null);
     }, [nodes, edges, setNodes, setEdges, takeSnapshot]);
 
+    // Sync callback refs with latest function versions
+    useEffect(() => {
+        addChildNodeRef.current = addChildNode;
+    }, [addChildNode]);
+
+    useEffect(() => {
+        addSiblingNodeRef.current = addSiblingNode;
+    }, [addSiblingNode]);
+
+    useEffect(() => {
+        deleteNodeRef.current = deleteNode;
+    }, [deleteNode]);
+
     const onConnect = useCallback(
         (params: Connection) => setEdges((eds) => addEdge(params, eds)),
         [setEdges]
@@ -329,7 +380,9 @@ export const IdeaMap: React.FC = () => {
 
     const onNodeClick = useCallback(
         (_: React.MouseEvent, node: Node) => {
+            console.log('[onNodeClick] Node clicked:', node.id);
             setSelectedNode(node);
+            console.log('[onNodeClick] setSelectedNode called with:', node);
         },
         []
     );
