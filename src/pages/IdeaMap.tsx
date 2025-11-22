@@ -161,13 +161,13 @@ export const IdeaMap: React.FC = () => {
         const newNode: Node = {
             id: newNodeId,
             type: 'mindmap',
-            position: { x: 0, y: 0 }, // Will be calculated by dagre
+            position: { x: 0, y: 0 },
             sourcePosition: Position.Right,
             targetPosition: Position.Left,
             draggable: false,
             connectable: false,
             data: {
-                label: 'New Idea',
+                label: '', // Start empty for autoFocus
                 level: parentLevel + 1,
                 parentId: parentId,
                 onChange: (newText: string) => {
@@ -192,8 +192,21 @@ export const IdeaMap: React.FC = () => {
             },
         };
 
-        setNodes((nds) => [...nds, newNode]);
-        setEdges((eds) => [...eds, newEdge]);
+        const updatedNodes = [...nodes, newNode];
+        const updatedEdges = [...edges, newEdge];
+
+        // Apply layout immediately
+        const { nodes: layoutedNodes } = getLayoutedElements(updatedNodes, updatedEdges);
+
+        // Force non-draggable/connectable
+        const finalNodes = layoutedNodes.map(node => ({
+            ...node,
+            draggable: false,
+            connectable: false
+        }));
+
+        setNodes(finalNodes);
+        setEdges(updatedEdges);
         setNodeId((id) => id + 1);
 
         // Auto-select the new node
@@ -206,44 +219,18 @@ export const IdeaMap: React.FC = () => {
     }, [nodeId, nodes, edges, setNodes, setEdges, takeSnapshot]);
 
     const addSiblingNode = useCallback((siblingId: string) => {
-        const siblingNode = nodes.find((n) => n.id === siblingId);
-        if (!siblingNode) return;
+        // Find incoming edge to identify parent
+        const incomingEdge = edges.find(e => e.target === siblingId);
+        const parentId = incomingEdge?.source;
 
-        const parentId = (siblingNode.data as MindMapNodeData).parentId;
         if (!parentId) {
-            // If no parent, create a new root-level node
-            takeSnapshot({ nodes, edges }); // Snapshot before change
-
-            const newNodeId = `node-${nodeId}`;
-            const newNode: Node = {
-                id: newNodeId,
-                type: 'mindmap',
-                position: { x: 0, y: 0 },
-                sourcePosition: Position.Right,
-                targetPosition: Position.Left,
-                draggable: false,
-                connectable: false,
-                data: {
-                    label: 'New Idea',
-                    level: 0,
-                    onChange: (newText: string) => {
-                        setNodes((nds) =>
-                            nds.map((node) =>
-                                node.id === newNodeId
-                                    ? { ...node, data: { ...node.data, label: newText } }
-                                    : node
-                            )
-                        );
-                    },
-                },
-            };
-            setNodes((nds) => [...nds, newNode]);
-            setNodeId((id) => id + 1);
+            // If no parent (Central Idea), behave like adding a child
+            addChildNode(siblingId);
         } else {
-            // Add as sibling (same parent)
+            // Add as sibling (child of the same parent)
             addChildNode(parentId);
         }
-    }, [nodeId, nodes, edges, setNodes, addChildNode, takeSnapshot]);
+    }, [edges, addChildNode]);
 
     const deleteNode = useCallback((nodeId: string) => {
         const { childrenMap } = buildTreeStructure(edges);

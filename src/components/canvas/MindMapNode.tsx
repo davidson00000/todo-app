@@ -10,29 +10,30 @@ export interface MindMapNodeData extends Record<string, unknown> {
 
 const MindMapNode: React.FC<NodeProps> = ({ data: rawData, selected }) => {
     const data = rawData as MindMapNodeData;
-    const [isEditing, setIsEditing] = useState(false);
     const [text, setText] = useState(data.label);
 
-    const handleDoubleClick = useCallback(() => {
-        setIsEditing(true);
-    }, []);
+    // Update local state when data changes externally
+    React.useEffect(() => {
+        setText(data.label);
+    }, [data.label]);
 
-    const handleBlur = useCallback(() => {
-        setIsEditing(false);
+    const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        setText(e.target.value);
         if (data.onChange) {
-            data.onChange(text);
+            data.onChange(e.target.value);
         }
-    }, [text, data]);
+    }, [data]);
 
     const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
+        // Prevent global shortcuts (like Backspace deleting the node) from firing while typing
+        e.stopPropagation();
+
+        if (e.key === 'Enter') {
             e.preventDefault();
-            setIsEditing(false);
-            if (data.onChange) {
-                data.onChange(text);
-            }
+            // Remove focus to finish editing
+            (e.target as HTMLInputElement).blur();
         }
-    }, [text, data]);
+    }, []);
 
     // Color based on level
     const getLevelColor = (level: number) => {
@@ -54,27 +55,19 @@ const MindMapNode: React.FC<NodeProps> = ({ data: rawData, selected }) => {
                 ${selected ? 'ring-4 ring-cyan-400 dark:ring-cyan-500 ring-opacity-50' : ''}
                 min-w-[120px] max-w-[200px]
             `}
-            onDoubleClick={handleDoubleClick}
         >
             {/* Hidden handles for connections */}
             <Handle type="target" position={Position.Left} className="opacity-0" />
             <Handle type="source" position={Position.Right} className="opacity-0" />
 
-            {isEditing ? (
-                <input
-                    type="text"
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    onBlur={handleBlur}
-                    onKeyDown={handleKeyDown}
-                    className="w-full bg-transparent border-none outline-none text-gray-900 dark:text-white text-sm font-medium"
-                    autoFocus
-                />
-            ) : (
-                <div className="text-gray-900 dark:text-white text-sm font-medium text-center whitespace-nowrap overflow-hidden text-ellipsis">
-                    {data.label || 'New Idea'}
-                </div>
-            )}
+            <input
+                type="text"
+                value={text}
+                onChange={handleChange}
+                onKeyDown={handleKeyDown}
+                className="nodrag w-full bg-transparent border-none outline-none text-gray-900 dark:text-white text-sm font-medium text-center"
+                autoFocus
+            />
         </div>
     );
 };
