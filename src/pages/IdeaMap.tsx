@@ -145,6 +145,7 @@ export const IdeaMap: React.FC = () => {
 
     // Keyboard shortcuts - stable event listener
     useEffect(() => {
+        console.log('[IdeaMap] v2.0 - Button Fix Applied');
         console.log('[IdeaMap] Registering keyboard event listener');
 
         const handleKeyDown = (event: KeyboardEvent) => {
