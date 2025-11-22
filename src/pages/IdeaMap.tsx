@@ -272,6 +272,16 @@ export const IdeaMap: React.FC = () => {
                         )
                     );
                 },
+                onAddChild: () => {
+                    if (addChildNodeRef.current) {
+                        addChildNodeRef.current(newNodeId);
+                    }
+                },
+                onAddSibling: () => {
+                    if (addSiblingNodeRef.current) {
+                        addSiblingNodeRef.current(newNodeId);
+                    }
+                },
             },
         };
 
@@ -459,6 +469,16 @@ export const IdeaMap: React.FC = () => {
                                     : node
                             )
                         );
+                    },
+                    onAddChild: () => {
+                        if (addChildNodeRef.current) {
+                            addChildNodeRef.current('node-0');
+                        }
+                    },
+                    onAddSibling: () => {
+                        if (addSiblingNodeRef.current) {
+                            addSiblingNodeRef.current('node-0');
+                        }
                     },
                 },
             };

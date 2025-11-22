@@ -15,6 +15,8 @@ export interface MindMapNodeData extends Record<string, unknown> {
     // Callbacks
     onChange?: (newText: string) => void;
     onStyleChange?: (style: Partial<MindMapNodeData>) => void;
+    onAddChild?: () => void;
+    onAddSibling?: () => void;
 }
 
 const colorOptions = [
@@ -223,6 +225,34 @@ const MindMapNode: React.FC<NodeProps> = ({ data: rawData, selected, id }) => {
                     }}
                     autoFocus
                 />
+
+                {/* Add Child Button (Right side) */}
+                {data.onAddChild && (
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            data.onAddChild?.();
+                        }}
+                        className="nodrag absolute -right-4 top-1/2 -translate-y-1/2 w-6 h-6 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110"
+                        title="Add child node (Tab)"
+                    >
+                        <Plus size={14} />
+                    </button>
+                )}
+
+                {/* Add Sibling Button (Bottom side) */}
+                {data.onAddSibling && (
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            data.onAddSibling?.();
+                        }}
+                        className="nodrag absolute -bottom-4 left-1/2 -translate-x-1/2 w-6 h-6 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110"
+                        title="Add sibling node (Enter)"
+                    >
+                        <Plus size={14} />
+                    </button>
+                )}
             </div>
         </>
     );
