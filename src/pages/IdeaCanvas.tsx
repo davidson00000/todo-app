@@ -32,6 +32,7 @@ const nodeTypes: NodeTypes = {
 };
 
 const STORAGE_KEY = 'ideaCanvas';
+const LAST_OPENED_CANVAS_ID_KEY = 'lastOpenedCanvasId';
 
 export const IdeaCanvas: React.FC = () => {
     const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -107,40 +108,68 @@ export const IdeaCanvas: React.FC = () => {
         });
     }, [setNodes]);
 
-    // Load from localStorage on mount
+    // Initialize: Load last opened canvas or local state
     useEffect(() => {
-        const savedCanvas = localStorage.getItem(STORAGE_KEY);
-        if (savedCanvas) {
-            try {
-                const parsed = JSON.parse(savedCanvas);
-                const { nodes: savedNodes, edges: savedEdges, nextId, settings, canvasInfo } = parsed;
+        const loadLastOpenedCanvas = async () => {
+            const lastCanvasId = localStorage.getItem(LAST_OPENED_CANVAS_ID_KEY);
+            if (lastCanvasId) {
+                try {
+                    const { data, error } = await supabase
+                        .from('canvases')
+                        .select('*')
+                        .eq('id', lastCanvasId)
+                        .single();
 
-                if (savedNodes && Array.isArray(savedNodes)) {
-                    setNodes(restoreNodeCallbacks(savedNodes));
+                    if (error) throw error;
+                    if (data) {
+                        handleLoadCanvas(data);
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Failed to load last opened canvas:', error);
+                    localStorage.removeItem(LAST_OPENED_CANVAS_ID_KEY);
                 }
-                if (savedEdges && Array.isArray(savedEdges)) {
-                    setEdges(savedEdges);
-                }
-                setNodeId(nextId || 0);
-
-                if (settings) {
-                    setBgVariant(settings.bgVariant || BackgroundVariant.Dots);
-                    setBgColor(settings.bgColor || '#f9fafb');
-                }
-
-                if (canvasInfo) {
-                    setCurrentCanvas(canvasInfo);
-                }
-            } catch (error) {
-                console.error('Failed to load canvas from localStorage:', error);
-                // Fallback: Clear everything if corrupted
-                setNodes([]);
-                setEdges([]);
-                setNodeId(0);
-                localStorage.removeItem(STORAGE_KEY);
             }
-        }
-    }, [restoreNodeCallbacks]);
+
+            // Fallback: Check local storage for unsaved work
+            const savedCanvas = localStorage.getItem(STORAGE_KEY);
+            if (savedCanvas) {
+                try {
+                    const parsed = JSON.parse(savedCanvas);
+                    const { nodes: savedNodes, edges: savedEdges, nextId, settings, canvasInfo, background_config } = parsed;
+
+                    if (savedNodes && Array.isArray(savedNodes)) {
+                        setNodes(restoreNodeCallbacks(savedNodes));
+                    }
+                    if (savedEdges && Array.isArray(savedEdges)) {
+                        setEdges(savedEdges);
+                    }
+                    setNodeId(nextId || 0);
+
+                    if (background_config) {
+                        setBgVariant(background_config.variant || BackgroundVariant.Dots);
+                        setBgColor(background_config.color || '#f9fafb');
+                    } else if (settings) {
+                        setBgVariant(settings.bgVariant || BackgroundVariant.Dots);
+                        setBgColor(settings.bgColor || '#f9fafb');
+                    }
+
+                    if (canvasInfo) {
+                        setCurrentCanvas(canvasInfo);
+                    }
+                } catch (error) {
+                    console.error('Failed to load canvas from localStorage:', error);
+                    // Fallback: Clear everything if corrupted
+                    setNodes([]);
+                    setEdges([]);
+                    setNodeId(0);
+                    localStorage.removeItem(STORAGE_KEY);
+                }
+            }
+        };
+
+        loadLastOpenedCanvas();
+    }, []);
 
     // Save to localStorage whenever state changes
     useEffect(() => {
@@ -308,6 +337,7 @@ export const IdeaCanvas: React.FC = () => {
 
             // Clear local storage
             localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem(LAST_OPENED_CANVAS_ID_KEY);
 
             // Clear URL parameters (navigate to clean /canvas route)
             navigate('/canvas', { replace: true });
@@ -352,6 +382,7 @@ export const IdeaCanvas: React.FC = () => {
             if (error) throw error;
 
             setCurrentCanvas(data);
+            localStorage.setItem(LAST_OPENED_CANVAS_ID_KEY, data.id);
             alert('Canvas saved successfully!');
         } catch (error) {
             console.error('Error saving canvas:', error);
@@ -386,6 +417,7 @@ export const IdeaCanvas: React.FC = () => {
             }
 
             setCurrentCanvas(canvas);
+            localStorage.setItem(LAST_OPENED_CANVAS_ID_KEY, canvas.id);
         } catch (error) {
             console.error('Error loading canvas:', error);
             alert('Failed to load canvas data');

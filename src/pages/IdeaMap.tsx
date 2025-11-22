@@ -33,6 +33,7 @@ const nodeTypes = {
 };
 
 const STORAGE_KEY = 'ideaMap';
+const LAST_OPENED_MAP_ID_KEY = 'lastOpenedMapId';
 
 export const IdeaMap: React.FC = () => {
     const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -352,6 +353,7 @@ export const IdeaMap: React.FC = () => {
             setBgVariant(BackgroundVariant.Lines);
             setBgColor('#ffffff');
             localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem(LAST_OPENED_MAP_ID_KEY);
             navigate('/map', { replace: true });
         }
     };
@@ -389,6 +391,7 @@ export const IdeaMap: React.FC = () => {
             if (error) throw error;
 
             setCurrentCanvas(data);
+            localStorage.setItem(LAST_OPENED_MAP_ID_KEY, data.id);
             alert('Mind map saved successfully!');
         } catch (error) {
             console.error('Error saving mind map:', error);
@@ -455,6 +458,7 @@ export const IdeaMap: React.FC = () => {
             }
 
             setCurrentCanvas(canvas);
+            localStorage.setItem(LAST_OPENED_MAP_ID_KEY, canvas.id);
         } catch (error) {
             console.error('Error loading mind map:', error);
             alert('Failed to load mind map data');
@@ -536,34 +540,105 @@ export const IdeaMap: React.FC = () => {
         handleNewCanvas();
     };
 
-    // Initialize with root node
+    // Initialize: Load last opened map or create root node
     useEffect(() => {
-        if (nodes.length === 0) {
-            const rootNode: Node = {
-                id: 'node-0',
-                type: 'mindmap',
-                position: { x: 250, y: 250 },
-                sourcePosition: Position.Right,
-                targetPosition: Position.Left,
-                draggable: false,
-                connectable: false,
-                data: {
-                    label: 'Central Idea',
-                    level: 0,
-                    onChange: (newText: string) => {
-                        setNodes((nds) =>
-                            nds.map((node) =>
-                                node.id === 'node-0'
-                                    ? { ...node, data: { ...node.data, label: newText } }
-                                    : node
-                            )
-                        );
+        const loadLastOpenedMap = async () => {
+            const lastMapId = localStorage.getItem(LAST_OPENED_MAP_ID_KEY);
+            if (lastMapId) {
+                try {
+                    const { data, error } = await supabase
+                        .from('canvases')
+                        .select('*')
+                        .eq('id', lastMapId)
+                        .single();
+
+                    if (error) throw error;
+                    if (data) {
+                        handleLoadCanvas(data);
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Failed to load last opened map:', error);
+                    localStorage.removeItem(LAST_OPENED_MAP_ID_KEY);
+                }
+            }
+
+            // Fallback: Check local storage for unsaved work
+            const savedState = localStorage.getItem(STORAGE_KEY);
+            if (savedState) {
+                try {
+                    const parsed = JSON.parse(savedState);
+                    if (parsed.nodes && parsed.nodes.length > 0) {
+                        // Restore from local state
+                        const { nodes: savedNodes, edges: savedEdges, nextId, settings, canvasInfo, background_config } = parsed;
+
+                        // Restore callbacks
+                        const nodesWithCallbacks = savedNodes.map((node: any) => ({
+                            ...node,
+                            data: {
+                                ...node.data,
+                                onChange: (newText: string) => {
+                                    setNodes((nds) =>
+                                        nds.map((n) =>
+                                            n.id === node.id
+                                                ? { ...n, data: { ...n.data, label: newText } }
+                                                : n
+                                        )
+                                    );
+                                },
+                            },
+                        }));
+
+                        setNodes(nodesWithCallbacks);
+                        setEdges(savedEdges || []);
+                        setNodeId(nextId || 0);
+
+                        if (background_config) {
+                            setBgVariant(background_config.variant || BackgroundVariant.Lines);
+                            setBgColor(background_config.color || '#ffffff');
+                        } else if (settings) {
+                            setBgVariant(settings.bgVariant || BackgroundVariant.Lines);
+                            setBgColor(settings.bgColor || '#ffffff');
+                        }
+
+                        if (canvasInfo) setCurrentCanvas(canvasInfo);
+                        return;
+                    }
+                } catch (e) {
+                    console.error('Failed to restore local state:', e);
+                }
+            }
+
+            // Initialize with root node if nothing loaded
+            if (nodes.length === 0) {
+                const rootNode: Node = {
+                    id: 'node-0',
+                    type: 'mindmap',
+                    position: { x: 250, y: 250 },
+                    sourcePosition: Position.Right,
+                    targetPosition: Position.Left,
+                    draggable: false,
+                    connectable: false,
+                    data: {
+                        label: 'Central Idea',
+                        level: 0,
+                        onChange: (newText: string) => {
+                            setNodes((nds) =>
+                                nds.map((node) =>
+                                    node.id === 'node-0'
+                                        ? { ...node, data: { ...node.data, label: newText } }
+                                        : node
+                                )
+                            );
+                        },
                     },
-                },
-            };
-            setNodes([rootNode]);
-            setNodeId(1);
-        }
+                };
+                setNodes([rootNode]);
+                setNodeId(1);
+            }
+        };
+
+        loadLastOpenedMap();
     }, []);
 
     return (
