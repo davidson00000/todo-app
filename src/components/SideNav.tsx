@@ -5,9 +5,11 @@ import { cn } from '../lib/utils';
 
 interface SideNavProps {
     onOpenSettings: () => void;
+    className?: string;
+    onClose?: () => void;
 }
 
-export const SideNav: React.FC<SideNavProps> = ({ onOpenSettings }) => {
+export const SideNav: React.FC<SideNavProps> = ({ onOpenSettings, className, onClose }) => {
     const location = useLocation();
     const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -18,17 +20,24 @@ export const SideNav: React.FC<SideNavProps> = ({ onOpenSettings }) => {
         { icon: FolderKanban, label: 'Projects', path: '/' },
     ];
 
+    const handleLinkClick = () => {
+        if (onClose) {
+            onClose();
+        }
+    };
+
     return (
         <div
             className={cn(
-                "flex-none h-screen bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 flex flex-col py-6 transition-all duration-300 ease-in-out z-50 hidden md:flex relative",
-                isCollapsed ? "w-20" : "w-64"
+                "flex-none h-screen bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 flex flex-col py-6 transition-all duration-300 ease-in-out z-50 relative",
+                isCollapsed ? "w-20" : "w-64",
+                className
             )}
         >
-            {/* Collapse Toggle */}
+            {/* Collapse Toggle - Only visible on desktop */}
             <button
                 onClick={() => setIsCollapsed(!isCollapsed)}
-                className="absolute top-7 -right-3 w-6 h-6 rounded-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 flex items-center justify-center shadow-sm text-gray-500 dark:text-slate-400 hover:text-cyan-400 transition-colors z-50"
+                className="hidden md:flex absolute top-7 -right-3 w-6 h-6 rounded-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 items-center justify-center shadow-sm text-gray-500 dark:text-slate-400 hover:text-cyan-400 transition-colors z-50"
             >
                 {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
             </button>
@@ -54,6 +63,7 @@ export const SideNav: React.FC<SideNavProps> = ({ onOpenSettings }) => {
                         <Link
                             key={item.path}
                             to={item.path}
+                            onClick={handleLinkClick}
                             className={cn(
                                 "flex items-center gap-3 px-4 py-3 rounded-lg transition-all group",
                                 isActive
@@ -76,7 +86,10 @@ export const SideNav: React.FC<SideNavProps> = ({ onOpenSettings }) => {
 
             <div className="mt-auto px-3 flex flex-col gap-2">
                 <button
-                    onClick={onOpenSettings}
+                    onClick={() => {
+                        onOpenSettings();
+                        handleLinkClick();
+                    }}
                     className={cn(
                         "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-cyan-400 transition-all group",
                         isCollapsed && "justify-center px-2"

@@ -330,7 +330,7 @@ function App() {
         <div className="flex h-screen w-screen overflow-hidden relative">
           {/* Mobile Menu Trigger */}
           <button
-            className="md:hidden absolute top-4 left-4 z-50 p-2 bg-slate-900 text-cyan-500 rounded-lg"
+            className="md:hidden absolute top-4 left-4 z-50 p-2 bg-slate-900 text-cyan-500 rounded-lg shadow-lg hover:bg-slate-800 transition-colors"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
             <Menu size={24} />
@@ -339,15 +339,26 @@ function App() {
           {/* Mobile Sidebar Overlay */}
           {isMobileMenuOpen && (
             <div
-              className="fixed inset-0 bg-black/50 z-40 md:hidden"
+              className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm"
               onClick={() => setIsMobileMenuOpen(false)}
             />
           )}
 
           {/* Sidebar with mobile visibility logic */}
-          <div className={cn("md:block", isMobileMenuOpen ? "fixed inset-y-0 left-0 z-50 block" : "hidden")}>
-            <SideNav onOpenSettings={() => setIsSettingsModalOpen(true)} />
+          {/* Mobile SideNav */}
+          <div className={cn("fixed inset-y-0 left-0 z-50 md:hidden transition-transform duration-300 ease-in-out", isMobileMenuOpen ? "translate-x-0" : "-translate-x-full")}>
+            <SideNav
+              onOpenSettings={() => setIsSettingsModalOpen(true)}
+              onClose={() => setIsMobileMenuOpen(false)}
+              className="w-64 h-full shadow-xl"
+            />
           </div>
+
+          {/* Desktop SideNav */}
+          <SideNav
+            onOpenSettings={() => setIsSettingsModalOpen(true)}
+            className="hidden md:flex"
+          />
 
           <div className="flex-1 min-w-0 flex flex-col w-full">
             <Layout
