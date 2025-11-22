@@ -392,18 +392,29 @@ export const IdeaMap: React.FC = () => {
         setSelectedNode(null);
     }, [setNodes, setEdges, takeSnapshot]);
 
+    // Keep refs in sync with state - Split into separate effects to avoid race conditions
+    useEffect(() => {
+        nodesRef.current = nodes;
+    }, [nodes]);
+
+    useEffect(() => {
+        edgesRef.current = edges;
+    }, [edges]);
+
+    useEffect(() => {
+        selectedNodeRef.current = selectedNode;
+    }, [selectedNode]);
+
+    useEffect(() => {
+        nodeIdRef.current = nodeId;
+    }, [nodeId]);
+
     // Sync callback refs with latest function versions
     useEffect(() => {
         addChildNodeRef.current = addChildNode;
-    }, [addChildNode]);
-
-    useEffect(() => {
         addSiblingNodeRef.current = addSiblingNode;
-    }, [addSiblingNode]);
-
-    useEffect(() => {
         deleteNodeRef.current = deleteNode;
-    }, [deleteNode]);
+    }, [addChildNode, addSiblingNode, deleteNode]);
 
     const onConnect = useCallback(
         (params: Connection) => setEdges((eds) => addEdge(params, eds)),

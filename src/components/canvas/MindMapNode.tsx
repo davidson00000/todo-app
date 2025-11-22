@@ -203,6 +203,7 @@ const MindMapNode: React.FC<NodeProps> = ({ data: rawData, selected, id }) => {
 
             <div
                 className={`
+                    group relative
                     py-3 border-2 shadow-md transition-all
                     ${currentColor}
                     ${shapeClass}
@@ -226,29 +227,29 @@ const MindMapNode: React.FC<NodeProps> = ({ data: rawData, selected, id }) => {
                     autoFocus
                 />
 
-                {/* Add Child Button (Right side) */}
+                {/* Add Child Button (Right side) - visible on hover */}
                 {data.onAddChild && (
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
                             data.onAddChild?.();
                         }}
-                        className="nodrag absolute -right-4 top-1/2 -translate-y-1/2 w-6 h-6 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110"
-                        title="Add child node (Tab)"
+                        className="nodrag absolute -right-4 top-1/2 -translate-y-1/2 w-6 h-6 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110 opacity-0 group-hover:opacity-100"
+                        title="Add child node"
                     >
                         <Plus size={14} />
                     </button>
                 )}
 
-                {/* Add Sibling Button (Bottom side) */}
+                {/* Add Sibling Button (Bottom side) - visible on hover */}
                 {data.onAddSibling && (
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
                             data.onAddSibling?.();
                         }}
-                        className="nodrag absolute -bottom-4 left-1/2 -translate-x-1/2 w-6 h-6 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110"
-                        title="Add sibling node (Enter)"
+                        className="nodrag absolute -bottom-4 left-1/2 -translate-x-1/2 w-6 h-6 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110 opacity-0 group-hover:opacity-100"
+                        title="Add sibling node"
                     >
                         <Plus size={14} />
                     </button>
