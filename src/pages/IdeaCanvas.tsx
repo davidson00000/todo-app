@@ -55,7 +55,7 @@ export const IdeaCanvas: React.FC = () => {
     const navigate = useNavigate();
 
     // Canvas Settings State
-    const [bgVariant, setBgVariant] = useState<BackgroundVariant>(BackgroundVariant.Dots);
+    const [bgVariant, setBgVariant] = useState<BackgroundVariant | string>(BackgroundVariant.Dots);
     const [bgColor, setBgColor] = useState('#f9fafb'); // Default gray-50
 
     // Helper to restore callbacks
@@ -535,7 +535,9 @@ export const IdeaCanvas: React.FC = () => {
                     >
                         <Controls />
                         <MiniMap />
-                        <Background variant={bgVariant} gap={16} size={1} />
+                        {bgVariant !== 'none' && (
+                            <Background variant={bgVariant as BackgroundVariant} gap={16} size={1} />
+                        )}
                     </ReactFlow>
                 </div>
             </div>

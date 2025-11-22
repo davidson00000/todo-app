@@ -13,9 +13,9 @@ interface CanvasSidebarProps {
     onDownloadPDF: () => Promise<void>;
     isOpen: boolean;
     onClose: () => void;
-    bgVariant: BackgroundVariant;
+    bgVariant: BackgroundVariant | string;
     bgColor: string;
-    onVariantChange: (variant: BackgroundVariant) => void;
+    onVariantChange: (variant: BackgroundVariant | string) => void;
     onColorChange: (color: string) => void;
     onClear: () => void;
     canvasType?: 'canvas' | 'mindmap'; // Filter by canvas type
@@ -238,7 +238,7 @@ const CanvasSidebar: React.FC<CanvasSidebarProps> = ({
                     <div className="space-y-4">
                         <div>
                             <label className="text-xs text-gray-500 dark:text-gray-400 block mb-2">Background Style</label>
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-3 gap-2">
                                 <button
                                     onClick={() => onVariantChange(BackgroundVariant.Dots)}
                                     className={`px-3 py-2 text-xs rounded border ${bgVariant === BackgroundVariant.Dots
@@ -256,6 +256,15 @@ const CanvasSidebar: React.FC<CanvasSidebarProps> = ({
                                         }`}
                                 >
                                     Lines
+                                </button>
+                                <button
+                                    onClick={() => onVariantChange('none')}
+                                    className={`px-3 py-2 text-xs rounded border ${bgVariant === 'none'
+                                        ? 'bg-cyan-50 border-cyan-200 text-cyan-700 dark:bg-cyan-900/20 dark:border-cyan-800 dark:text-cyan-400'
+                                        : 'border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400'
+                                        }`}
+                                >
+                                    None
                                 </button>
                             </div>
                         </div>

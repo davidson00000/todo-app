@@ -57,7 +57,7 @@ export const IdeaMap: React.FC = () => {
     const navigate = useNavigate();
 
     // Canvas Settings State
-    const [bgVariant, setBgVariant] = useState<BackgroundVariant>(BackgroundVariant.Lines);
+    const [bgVariant, setBgVariant] = useState<BackgroundVariant | string>(BackgroundVariant.Lines);
     const [bgColor, setBgColor] = useState('#ffffff');
 
     // Undo/Redo functionality
@@ -671,7 +671,9 @@ export const IdeaMap: React.FC = () => {
                         fitView
                         className="bg-transparent"
                     >
-                        <Background variant={bgVariant} />
+                        {bgVariant !== 'none' && (
+                            <Background variant={bgVariant as BackgroundVariant} />
+                        )}
                         <Controls />
                         <MiniMap />
                     </ReactFlow>
