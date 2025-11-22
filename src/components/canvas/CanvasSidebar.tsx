@@ -262,16 +262,21 @@ const CanvasSidebar: React.FC<CanvasSidebarProps> = ({
 
                         <div>
                             <label className="text-xs text-gray-500 dark:text-gray-400 block mb-2">Background Color</label>
-                            <div className="flex gap-2">
-                                {['#ffffff', '#f8fafc', '#f0f9ff', '#f0fdf4', '#fff1f2'].map((color) => (
-                                    <button
-                                        key={color}
-                                        onClick={() => onColorChange(color)}
-                                        className={`w-6 h-6 rounded-full border ${bgColor === color ? 'ring-2 ring-cyan-500 ring-offset-2' : 'border-gray-200'
-                                            }`}
-                                        style={{ backgroundColor: color }}
-                                    />
-                                ))}
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="color"
+                                    value={bgColor}
+                                    onChange={(e) => onColorChange(e.target.value)}
+                                    className="w-8 h-8 p-0 border-0 rounded cursor-pointer bg-transparent"
+                                />
+                                <input
+                                    type="text"
+                                    value={bgColor}
+                                    onChange={(e) => onColorChange(e.target.value)}
+                                    className="flex-1 px-2 py-1 text-sm border rounded dark:bg-slate-800 dark:border-slate-700 dark:text-white uppercase"
+                                    placeholder="#FFFFFF"
+                                    maxLength={7}
+                                />
                             </div>
                         </div>
                     </div>
