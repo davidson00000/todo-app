@@ -301,12 +301,17 @@ export const IdeaMap: React.FC = () => {
             connectable: false
         }));
 
+        // CRITICAL: Update refs BEFORE setNodes/setEdges so they're available immediately
+        nodesRef.current = finalNodes;
+        edgesRef.current = updatedEdges;
+        nodeIdRef.current = currentNodeId + 1;
+
         // Update state with layouted nodes and new edges
         setNodes(finalNodes);
         setEdges(updatedEdges);
         setNodeId((id) => id + 1);
 
-        console.log('[addChildNode] Node added successfully');
+        console.log('[addChildNode] Node added successfully, refs updated');
 
         // Auto-select the new node
         setTimeout(() => {
