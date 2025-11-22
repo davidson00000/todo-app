@@ -208,8 +208,8 @@ const MindMapNode: React.FC<NodeProps> = ({ data: rawData, selected, id }) => {
                     min-w-[120px] max-w-[250px]
                 `}
             >
-                <Handle type="target" position={Position.Left} className="opacity-0" />
-                <Handle type="source" position={Position.Right} className="opacity-0" />
+                <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
+                <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
 
                 <input
                     type="text"

@@ -201,10 +201,11 @@ export const IdeaMap: React.FC = () => {
             },
         };
 
+        // IMPORTANT: Create new arrays for layout calculation
         const updatedNodes = [...nodes, newNode];
         const updatedEdges = [...edges, newEdge];
 
-        // Apply layout immediately
+        // Apply layout immediately with the NEW nodes and edges
         const { nodes: layoutedNodes } = getLayoutedElements(updatedNodes, updatedEdges);
 
         // Force non-draggable/connectable
@@ -214,6 +215,7 @@ export const IdeaMap: React.FC = () => {
             connectable: false
         }));
 
+        // Update state with layouted nodes and new edges
         setNodes(finalNodes);
         setEdges(updatedEdges);
         setNodeId((id) => id + 1);
