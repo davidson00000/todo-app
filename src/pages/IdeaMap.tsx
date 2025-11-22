@@ -14,7 +14,6 @@ import {
     type Node,
     type Edge,
     type ReactFlowInstance,
-    MarkerType,
     Position,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -231,7 +230,8 @@ export const IdeaMap: React.FC = () => {
         const currentEdges = edgesRef.current;
 
         console.log('[addChildNode] Called with parentId:', parentId, 'nodes:', currentNodes.length, 'edges:', currentEdges.length);
-        takeSnapshot({ nodes: currentNodes, edges: currentEdges }); // Snapshot before change
+        // REMOVED: takeSnapshot here caused state reset to previous version
+        // takeSnapshot({ nodes: currentNodes, edges: currentEdges }); 
 
         let currentNodeId = nodeIdRef.current;
         // Safety check: Ensure we don't generate an ID that already exists
@@ -314,7 +314,7 @@ export const IdeaMap: React.FC = () => {
             source: parentId,
             target: newNodeId,
             type: 'smoothstep', // Better for mind maps
-            animated: true,
+            animated: false, // Solid lines as requested
             style: { stroke: '#94a3b8', strokeWidth: 2 },
         };
 
@@ -333,6 +333,9 @@ export const IdeaMap: React.FC = () => {
         setNodes(finalNodes);
         setEdges(updatedEdges);
         setNodeId(currentNodeId + 1); // Sync state
+
+        // Update history with NEW state
+        takeSnapshot({ nodes: finalNodes, edges: updatedEdges });
 
         // Auto-select the new node for editing
         setTimeout(() => {
@@ -367,13 +370,14 @@ export const IdeaMap: React.FC = () => {
         const { childrenMap } = buildTreeStructure(currentEdges);
         const hasChildren = (childrenMap.get(nodeId) || []).length > 0;
 
+        let nextNodes: Node[] = [];
+        let nextEdges: Edge[] = [];
+
         if (hasChildren) {
             const confirmed = window.confirm(
                 'This node has children. Delete them too?'
             );
             if (!confirmed) return;
-
-            takeSnapshot({ nodes: currentNodes, edges: currentEdges }); // Snapshot before change
 
             // Collect all descendants
             const toDelete = new Set([nodeId]);
@@ -387,18 +391,23 @@ export const IdeaMap: React.FC = () => {
                 });
             }
 
-            setNodes((nds) => nds.filter((n) => !toDelete.has(n.id)));
-            setEdges((eds) =>
-                eds.filter((e) => !toDelete.has(e.source) && !toDelete.has(e.target))
-            );
+            nextNodes = currentNodes.filter((n) => !toDelete.has(n.id));
+            nextEdges = currentEdges.filter((e) => !toDelete.has(e.source) && !toDelete.has(e.target));
         } else {
-            takeSnapshot({ nodes: currentNodes, edges: currentEdges }); // Snapshot before change
-
-            setNodes((nds) => nds.filter((n) => n.id !== nodeId));
-            setEdges((eds) =>
-                eds.filter((e) => e.source !== nodeId && e.target !== nodeId)
-            );
+            nextNodes = currentNodes.filter((n) => n.id !== nodeId);
+            nextEdges = currentEdges.filter((e) => e.source !== nodeId && e.target !== nodeId);
         }
+
+        // Update state
+        setNodes(nextNodes);
+        setEdges(nextEdges);
+
+        // Update refs
+        nodesRef.current = nextNodes;
+        edgesRef.current = nextEdges;
+
+        // Update history with NEW state
+        takeSnapshot({ nodes: nextNodes, edges: nextEdges });
 
         setSelectedNode(null);
     }, [setNodes, setEdges, takeSnapshot]);
@@ -462,7 +471,6 @@ export const IdeaMap: React.FC = () => {
     // File Management Functions
     const handleNewCanvas = () => {
         if (window.confirm('Create new mind map? Unsaved changes will be lost.')) {
-            console.log('[handleNewCanvas] Creating new canvas...');
             const initialNodes: Node[] = [
                 {
                     id: 'node-0',
@@ -520,7 +528,6 @@ export const IdeaMap: React.FC = () => {
             edgesRef.current = [];
             nodeIdRef.current = 1;
 
-            console.log('[handleNewCanvas] New canvas created. nodes:', initialNodes.length);
             setBgVariant(BackgroundVariant.Lines);
             setBgColor('#ffffff');
             localStorage.removeItem(STORAGE_KEY);
@@ -910,35 +917,7 @@ export const IdeaMap: React.FC = () => {
                     </button>
                 </div>
 
-                {/* Instructions */}
-                <div className="absolute top-4 right-4 z-50 bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-3">
-                    <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
-                        Keyboard Shortcuts
-                    </p>
-                    <div className="text-xs text-gray-600 dark:text-gray-300 space-y-0.5">
-                        <div>
-                            <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">
-                                Tab
-                            </kbd>{' '}
-                            Add child (select node, press Tab)
-                        </div>
-                        <div>
-                            <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">
-                                Enter
-                            </kbd>{' '}
-                            Add sibling / Finish editing
-                        </div>
-                        <div>
-                            <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">
-                                Backspace
-                            </kbd>{' '}
-                            Delete node
-                        </div>
-                        <div className="text-gray-400 dark:text-gray-500 mt-1 italic">
-                            Tip: Press Enter to finish editing, then use shortcuts
-                        </div>
-                    </div>
-                </div>
+
 
                 <div ref={reactFlowWrapper} className="w-full h-full">
                     <ReactFlow
