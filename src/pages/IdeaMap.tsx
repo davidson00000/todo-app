@@ -510,7 +510,10 @@ export const IdeaMap: React.FC = () => {
             setEdges([]);
             setNodeId(1); // Reset node ID counter
             setCurrentCanvas(null); // Clear current canvas selection
-            resetHistory(); // Clear history
+            resetHistory({
+                nodes: initialNodes,
+                edges: []
+            }); // Clear history with new state
 
             // Force ref update
             nodesRef.current = initialNodes;
