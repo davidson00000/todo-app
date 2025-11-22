@@ -121,8 +121,9 @@ export const IdeaMap: React.FC = () => {
         const handleKeyDown = (event: KeyboardEvent) => {
             if (!selectedNode) return;
 
-            // Prevent shortcuts when typing in input
-            if ((event.target as HTMLElement).tagName === 'INPUT') return;
+            // Prevent shortcuts when typing in input fields or textareas
+            const target = event.target as HTMLElement;
+            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
 
             switch (event.key) {
                 case 'Tab':
@@ -746,19 +747,22 @@ export const IdeaMap: React.FC = () => {
                             <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">
                                 Tab
                             </kbd>{' '}
-                            Add child
+                            Add child (select node, press Tab)
                         </div>
                         <div>
                             <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">
                                 Enter
                             </kbd>{' '}
-                            Add sibling
+                            Add sibling / Finish editing
                         </div>
                         <div>
                             <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">
                                 Backspace
                             </kbd>{' '}
-                            Delete
+                            Delete node
+                        </div>
+                        <div className="text-gray-400 dark:text-gray-500 mt-1 italic">
+                            Tip: Press Enter to finish editing, then use shortcuts
                         </div>
                     </div>
                 </div>
