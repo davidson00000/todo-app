@@ -311,15 +311,12 @@ export const IdeaMap: React.FC = () => {
         setEdges(updatedEdges);
         setNodeId((id) => id + 1);
 
-        console.log('[addChildNode] Node added successfully, refs updated');
+        console.log('[addChildNode] Node added successfully, refs updated. New state:', finalNodes.length, 'nodes,', updatedEdges.length, 'edges');
 
-        // Auto-select the new node
+        // Auto-select the new node (without calling setNodes again to avoid ref sync issues)
         setTimeout(() => {
             setSelectedNode(newNode);
-            setNodes((nds) =>
-                nds.map((n) => ({ ...n, selected: n.id === newNodeId }))
-            );
-        }, 100);
+        }, 50);
     }, [setNodes, setEdges, setNodeId, takeSnapshot]);
 
     const addSiblingNode = useCallback((siblingId: string) => {
