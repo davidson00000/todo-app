@@ -226,12 +226,19 @@ export const IdeaMap: React.FC = () => {
     }, []); // Empty array - listener never re-registered
 
     const addChildNode = useCallback((parentId: string) => {
-        console.log('[addChildNode] Called with parentId:', parentId, 'nodes:', nodesRef.current.length, 'edges:', edgesRef.current.length);
-        takeSnapshot({ nodes, edges }); // Snapshot before change
+        const currentNodes = nodesRef.current;
+        const currentEdges = edgesRef.current;
+        const currentNodeId = nodeIdRef.current;
 
-        const newNodeId = `node-${nodeId}`;
-        const parentNode = nodes.find((n) => n.id === parentId);
-        if (!parentNode) return;
+        console.log('[addChildNode] Called with parentId:', parentId, 'nodes:', currentNodes.length, 'edges:', currentEdges.length);
+        takeSnapshot({ nodes: currentNodes, edges: currentEdges }); // Snapshot before change
+
+        const newNodeId = `node-${currentNodeId}`;
+        const parentNode = currentNodes.find((n) => n.id === parentId);
+        if (!parentNode) {
+            console.log('[addChildNode] Parent node not found:', parentId);
+            return;
+        }
 
         const parentLevel = (parentNode.data as MindMapNodeData).level || 0;
 
@@ -279,8 +286,10 @@ export const IdeaMap: React.FC = () => {
         };
 
         // IMPORTANT: Create new arrays for layout calculation
-        const updatedNodes = [...nodes, newNode];
-        const updatedEdges = [...edges, newEdge];
+        const updatedNodes = [...currentNodes, newNode];
+        const updatedEdges = [...currentEdges, newEdge];
+
+        console.log('[addChildNode] Creating node:', newNodeId, 'updatedNodes:', updatedNodes.length, 'updatedEdges:', updatedEdges.length);
 
         // Apply layout immediately with the NEW nodes and edges
         const { nodes: layoutedNodes } = getLayoutedElements(updatedNodes, updatedEdges);
@@ -297,6 +306,8 @@ export const IdeaMap: React.FC = () => {
         setEdges(updatedEdges);
         setNodeId((id) => id + 1);
 
+        console.log('[addChildNode] Node added successfully');
+
         // Auto-select the new node
         setTimeout(() => {
             setSelectedNode(newNode);
@@ -304,24 +315,33 @@ export const IdeaMap: React.FC = () => {
                 nds.map((n) => ({ ...n, selected: n.id === newNodeId }))
             );
         }, 100);
-    }, [nodeId, nodes, edges, setNodes, setEdges, takeSnapshot]);
+    }, [setNodes, setEdges, setNodeId, takeSnapshot]);
 
     const addSiblingNode = useCallback((siblingId: string) => {
+        const currentEdges = edgesRef.current;
+
         // Find incoming edge to identify parent
-        const incomingEdge = edges.find(e => e.target === siblingId);
+        const incomingEdge = currentEdges.find(e => e.target === siblingId);
         const parentId = incomingEdge?.source;
 
         if (!parentId) {
             // If no parent (Central Idea), behave like adding a child
-            addChildNode(siblingId);
+            if (addChildNodeRef.current) {
+                addChildNodeRef.current(siblingId);
+            }
         } else {
             // Add as sibling (child of the same parent)
-            addChildNode(parentId);
+            if (addChildNodeRef.current) {
+                addChildNodeRef.current(parentId);
+            }
         }
-    }, [edges, addChildNode]);
+    }, []);
 
     const deleteNode = useCallback((nodeId: string) => {
-        const { childrenMap } = buildTreeStructure(edges);
+        const currentNodes = nodesRef.current;
+        const currentEdges = edgesRef.current;
+
+        const { childrenMap } = buildTreeStructure(currentEdges);
         const hasChildren = (childrenMap.get(nodeId) || []).length > 0;
 
         if (hasChildren) {
@@ -330,7 +350,7 @@ export const IdeaMap: React.FC = () => {
             );
             if (!confirmed) return;
 
-            takeSnapshot({ nodes, edges }); // Snapshot before change
+            takeSnapshot({ nodes: currentNodes, edges: currentEdges }); // Snapshot before change
 
             // Collect all descendants
             const toDelete = new Set([nodeId]);
@@ -349,7 +369,7 @@ export const IdeaMap: React.FC = () => {
                 eds.filter((e) => !toDelete.has(e.source) && !toDelete.has(e.target))
             );
         } else {
-            takeSnapshot({ nodes, edges }); // Snapshot before change
+            takeSnapshot({ nodes: currentNodes, edges: currentEdges }); // Snapshot before change
 
             setNodes((nds) => nds.filter((n) => n.id !== nodeId));
             setEdges((eds) =>
@@ -358,7 +378,7 @@ export const IdeaMap: React.FC = () => {
         }
 
         setSelectedNode(null);
-    }, [nodes, edges, setNodes, setEdges, takeSnapshot]);
+    }, [setNodes, setEdges, takeSnapshot]);
 
     // Sync callback refs with latest function versions
     useEffect(() => {
