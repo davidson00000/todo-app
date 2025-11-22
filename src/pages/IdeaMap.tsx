@@ -116,11 +116,31 @@ export const IdeaMap: React.FC = () => {
     //     }
     // }, [edges]);
 
-    // Keyboard shortcuts
+    // Use refs to access latest values without causing effect re-runs
+    const selectedNodeRef = useRef(selectedNode);
+    const nodesRef = useRef(nodes);
+    const edgesRef = useRef(edges);
+
+    useEffect(() => {
+        selectedNodeRef.current = selectedNode;
+    }, [selectedNode]);
+
+    useEffect(() => {
+        nodesRef.current = nodes;
+    }, [nodes]);
+
+    useEffect(() => {
+        edgesRef.current = edges;
+    }, [edges]);
+
+    // Keyboard shortcuts - stable event listener
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
+            // Use ref to get latest selectedNode value
+            const currentSelectedNode = selectedNodeRef.current;
+
             // ノードが選択されていない場合は何もしない
-            if (!selectedNode) return;
+            if (!currentSelectedNode) return;
 
             const target = event.target as HTMLElement;
             const isTyping = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
@@ -128,7 +148,7 @@ export const IdeaMap: React.FC = () => {
             // ■ Tabキー: 子ノード追加 (入力中でも有効)
             if (event.key === 'Tab') {
                 event.preventDefault(); // ブラウザのフォーカス移動を防止
-                addChildNode(selectedNode.id);
+                addChildNode(currentSelectedNode.id);
                 return;
             }
 
@@ -145,14 +165,14 @@ export const IdeaMap: React.FC = () => {
                 }
 
                 // 兄弟ノードを追加
-                addSiblingNode(selectedNode.id);
+                addSiblingNode(currentSelectedNode.id);
                 return;
             }
 
             // ■ Backspace/Delete: 削除 (入力中は無効化)
             if ((event.key === 'Backspace' || event.key === 'Delete') && !isTyping) {
                 event.preventDefault();
-                deleteNode(selectedNode.id);
+                deleteNode(currentSelectedNode.id);
                 return;
             }
 
@@ -166,7 +186,7 @@ export const IdeaMap: React.FC = () => {
 
         window.addEventListener('keydown', handleKeyDown, { capture: true });
         return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
-    }, [selectedNode, nodes, edges, setNodes]);
+    }, []); // Empty array - listener never re-registered
 
     const addChildNode = useCallback((parentId: string) => {
         takeSnapshot({ nodes, edges }); // Snapshot before change
