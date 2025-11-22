@@ -119,36 +119,54 @@ export const IdeaMap: React.FC = () => {
     // Keyboard shortcuts
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
+            // ノードが選択されていない場合は何もしない
             if (!selectedNode) return;
 
-            // Prevent shortcuts when typing in input fields or textareas
             const target = event.target as HTMLElement;
-            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+            const isTyping = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
 
-            switch (event.key) {
-                case 'Tab':
-                    event.preventDefault();
-                    addChildNode(selectedNode.id);
-                    break;
-                case 'Enter':
-                    event.preventDefault();
-                    addSiblingNode(selectedNode.id);
-                    break;
-                case 'Backspace':
-                case 'Delete':
-                    event.preventDefault();
-                    deleteNode(selectedNode.id);
-                    break;
-                case 'Escape':
-                    setSelectedNode(null);
-                    setNodes((nds) => nds.map((n) => ({ ...n, selected: false })));
-                    break;
+            // ■ Tabキー: 子ノード追加 (入力中でも有効)
+            if (event.key === 'Tab') {
+                event.preventDefault(); // ブラウザのフォーカス移動を防止
+                addChildNode(selectedNode.id);
+                return;
+            }
+
+            // ■ Enterキー: 兄弟ノード追加 (入力中は確定してから追加)
+            if (event.key === 'Enter') {
+                // 日本語入力(IME)確定中は無視
+                if (event.isComposing) return;
+
+                event.preventDefault();
+
+                // 入力中ならフォーカスを外して編集終了扱いにする
+                if (isTyping) {
+                    target.blur();
+                }
+
+                // 兄弟ノードを追加
+                addSiblingNode(selectedNode.id);
+                return;
+            }
+
+            // ■ Backspace/Delete: 削除 (入力中は無効化)
+            if ((event.key === 'Backspace' || event.key === 'Delete') && !isTyping) {
+                event.preventDefault();
+                deleteNode(selectedNode.id);
+                return;
+            }
+
+            // ■ Escape: 選択解除
+            if (event.key === 'Escape') {
+                setSelectedNode(null);
+                setNodes((nds) => nds.map((n) => ({ ...n, selected: false })));
+                return;
             }
         };
 
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [selectedNode, nodes, edges]);
+        window.addEventListener('keydown', handleKeyDown, { capture: true });
+        return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
+    }, [selectedNode, nodes, edges, setNodes]);
 
     const addChildNode = useCallback((parentId: string) => {
         takeSnapshot({ nodes, edges }); // Snapshot before change
