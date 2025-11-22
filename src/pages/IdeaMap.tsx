@@ -179,6 +179,15 @@ export const IdeaMap: React.FC = () => {
                         )
                     );
                 },
+                onStyleChange: (style: Partial<MindMapNodeData>) => {
+                    setNodes((nds) =>
+                        nds.map((node) =>
+                            node.id === newNodeId
+                                ? { ...node, data: { ...node.data, ...style } }
+                                : node
+                        )
+                    );
+                },
             },
         };
 
@@ -326,6 +335,15 @@ export const IdeaMap: React.FC = () => {
                             )
                         );
                     },
+                    onStyleChange: (style: Partial<MindMapNodeData>) => {
+                        setNodes((nds) =>
+                            nds.map((node) =>
+                                node.id === 'node-0'
+                                    ? { ...node, data: { ...node.data, ...style } }
+                                    : node
+                            )
+                        );
+                    },
                 },
             };
 
@@ -356,7 +374,7 @@ export const IdeaMap: React.FC = () => {
             }
 
             const nodesToSave = nodes.map(({ position, data, ...node }) => {
-                const { onChange, ...restData } = data as any;
+                const { onChange, onStyleChange, ...restData } = data as any;
                 return { ...node, data: restData };
             });
 
@@ -408,6 +426,15 @@ export const IdeaMap: React.FC = () => {
                                 nds.map((n) =>
                                     n.id === node.id
                                         ? { ...n, data: { ...n.data, label: newText } }
+                                        : n
+                                )
+                            );
+                        },
+                        onStyleChange: (style: Partial<MindMapNodeData>) => {
+                            setNodes((nds) =>
+                                nds.map((n) =>
+                                    n.id === node.id
+                                        ? { ...n, data: { ...n.data, ...style } }
                                         : n
                                 )
                             );
@@ -571,6 +598,15 @@ export const IdeaMap: React.FC = () => {
                                         nds.map((n) =>
                                             n.id === node.id
                                                 ? { ...n, data: { ...n.data, label: newText } }
+                                                : n
+                                        )
+                                    );
+                                },
+                                onStyleChange: (style: Partial<MindMapNodeData>) => {
+                                    setNodes((nds) =>
+                                        nds.map((n) =>
+                                            n.id === node.id
+                                                ? { ...n, data: { ...n.data, ...style } }
                                                 : n
                                         )
                                     );
