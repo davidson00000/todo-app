@@ -103,18 +103,18 @@ export const IdeaMap: React.FC = () => {
         return () => window.removeEventListener('keydown', handleUndoRedo);
     }, [performUndo, performRedo]);
 
-    // Apply auto-layout whenever nodes or edges change
-    useEffect(() => {
-        if (nodes.length > 0) {
-            const { nodes: layoutedNodes } = getLayoutedElements(nodes, edges);
-            // Force all nodes to be non-draggable and non-connectable
-            setNodes(layoutedNodes.map(node => ({
-                ...node,
-                draggable: false,
-                connectable: false
-            })));
-        }
-    }, [edges]); // Only re-layout when edges change
+    // REMOVED: Auto-layout on edge changes (conflicts with manual layout in addChildNode)
+    // The layout is now applied immediately in addChildNode/addSiblingNode
+    // useEffect(() => {
+    //     if (nodes.length > 0) {
+    //         const { nodes: layoutedNodes } = getLayoutedElements(nodes, edges);
+    //         setNodes(layoutedNodes.map(node => ({
+    //             ...node,
+    //             draggable: false,
+    //             connectable: false
+    //         })));
+    //     }
+    // }, [edges]);
 
     // Keyboard shortcuts
     useEffect(() => {
